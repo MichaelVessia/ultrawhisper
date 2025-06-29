@@ -58,12 +58,6 @@ If automatic hotkey registration fails, you can set it up manually:
 
 **Other desktop environments:** Run the app and it will show specific instructions for your system.
 
-### System Tray Alternative
-
-If global hotkeys are unavailable, UltraWhisper provides a system tray icon:
-- Click to start/stop recording
-- Right-click for settings
-- Works on all desktop environments
 
 ## Development
 
@@ -106,7 +100,6 @@ See [plans/](./plans/) directory for detailed implementation plans.
 - [x] Milestone 3: Audio Recording
 - [x] Milestone 4: Local Whisper Integration
 - [x] Milestone 5: Clipboard Integration
-- [ ] Milestone 6: System Tray Integration
 - [ ] Milestone 7: Configuration Management
 - [ ] Milestone 8: Transcription Modes
 - [ ] Milestone 9: Performance Optimization
