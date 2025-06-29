@@ -41,7 +41,7 @@ UltraWhisper automatically registers **Ctrl+`** as the global recording hotkey o
 2. Press `Ctrl+`` again to stop recording and get transcription
 3. Text is automatically placed in your clipboard
 
-**Current Status**: Core functionality is implemented and working. The application successfully handles the complete pipeline from hotkey detection through audio recording to transcription and clipboard integration.
+**Current Status**: ✅ **All core functionality is implemented and working!** The application successfully handles the complete pipeline from hotkey detection through audio recording to Whisper transcription and clipboard integration. The app runs as a background service and responds to the global hotkey.
 
 ### Manual Setup
 
@@ -58,6 +58,26 @@ If automatic hotkey registration fails, you can set it up manually:
 
 **Other desktop environments:** Run the app and it will show specific instructions for your system.
 
+## What's Implemented
+
+✅ **Complete voice transcription pipeline:**
+- Global hotkey registration (`Ctrl+``) with multi-desktop support
+- Audio recording via ALSA (arecord) in 16kHz mono format optimized for Whisper
+- Local Whisper model integration using whisper-node (no cloud dependency)
+- Automatic clipboard integration using xsel
+- Real-time user feedback and error handling
+
+✅ **Cross-desktop Linux support:**
+- GNOME Shell (Ubuntu default) via DBus API
+- KDE Plasma via Desktop Portal API  
+- XFCE and other environments via Desktop Portal API
+- Automatic desktop environment detection and fallback
+
+✅ **System integration:**
+- Background service mode - runs continuously listening for hotkey
+- System dependency checking (arecord, xsel)
+- Proper audio format handling and Whisper model initialization
+- Memory-efficient streaming architecture using Effect.ts
 
 ## Development
 
@@ -95,12 +115,16 @@ bun run typecheck
 
 See [plans/](./plans/) directory for detailed implementation plans.
 
-- [x] Milestone 1: Project Setup & Basic Effect.ts Structure
-- [x] Milestone 2: Global Hotkey Detection
-- [x] Milestone 3: Audio Recording
-- [x] Milestone 4: Local Whisper Integration
-- [x] Milestone 5: Clipboard Integration
-- [ ] Milestone 7: Configuration Management
-- [ ] Milestone 8: Transcription Modes
-- [ ] Milestone 9: Performance Optimization
-- [ ] Milestone 10: Polish & Error Handling
+- [x] **Milestone 1**: Project Setup & Basic Effect.ts Structure ✅
+- [x] **Milestone 2**: Global Hotkey Detection ✅
+- [x] **Milestone 3**: Audio Recording ✅  
+- [x] **Milestone 4**: Local Whisper Integration ✅
+- [x] **Milestone 5**: Clipboard Integration ✅
+
+**🎉 Core application is complete and functional!**
+
+### Future Milestones
+- [ ] **Milestone 7**: Configuration Management
+- [ ] **Milestone 8**: Transcription Modes
+- [ ] **Milestone 9**: Performance Optimization
+- [ ] **Milestone 10**: Polish & Error Handling
