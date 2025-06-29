@@ -1,9 +1,9 @@
-import { Context, Effect, Layer, Stream } from 'effect'
-import dbus from 'dbus-next'
-import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
 import type { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { HotkeyRegistrationFailed, ServiceUnavailable } from '@domain/keyboard/KeyboardErrors.ts'
+import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
 import { DBUS_SERVICES, DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
+import dbus from 'dbus-next'
+import { Context, Effect, Layer, Stream } from 'effect'
 
 export class PortalKeyboardService implements KeyboardService {
   private bus: any = null
@@ -22,13 +22,17 @@ export class PortalKeyboardService implements KeyboardService {
 
       self.portal = yield* Effect.tryPromise({
         try: async () => {
-          const portal = await self.bus!.getProxyObject(DBUS_SERVICES.DESKTOP_PORTAL, '/org/freedesktop/portal/desktop')
+          const portal = await self.bus!.getProxyObject(
+            DBUS_SERVICES.DESKTOP_PORTAL,
+            '/org/freedesktop/portal/desktop',
+          )
           return portal.getInterface('org.freedesktop.portal.GlobalShortcuts')
         },
-        catch: (error) => new ServiceUnavailable({
-          service: 'Desktop Portal GlobalShortcuts',
-          details: error instanceof Error ? error.message : String(error),
-        }),
+        catch: (error) =>
+          new ServiceUnavailable({
+            service: 'Desktop Portal GlobalShortcuts',
+            details: error instanceof Error ? error.message : String(error),
+          }),
       })
     })
   }
@@ -47,24 +51,25 @@ export class PortalKeyboardService implements KeyboardService {
       yield* Effect.tryPromise({
         try: async () => {
           const shortcutId = `ultrawhisper-${hotkeyKey.replace(/[^a-zA-Z0-9]/g, '-')}`
-          
+
           const result = await self.portal.CreateShortcut({
-            'session_handle': '',
-            'shortcut_id': shortcutId,
-            'shortcut': {
-              'trigger_description': `UltraWhisper: ${hotkeyKey}`,
-              'preferred_trigger': DEFAULT_RECORDING_HOTKEY,
+            session_handle: '',
+            shortcut_id: shortcutId,
+            shortcut: {
+              trigger_description: `UltraWhisper: ${hotkeyKey}`,
+              preferred_trigger: DEFAULT_RECORDING_HOTKEY,
             },
-            'options': {},
+            options: {},
           })
 
           self.registeredHotkeys.set(hotkeyKey, shortcutId)
           return result
         },
-        catch: (error) => new HotkeyRegistrationFailed({
-          hotkey: hotkeyKey,
-          reason: `Portal registration failed: ${error instanceof Error ? error.message : String(error)}`,
-        }),
+        catch: (error) =>
+          new HotkeyRegistrationFailed({
+            hotkey: hotkeyKey,
+            reason: `Portal registration failed: ${error instanceof Error ? error.message : String(error)}`,
+          }),
       })
 
       yield* Effect.log(`Registered portal hotkey: ${hotkeyKey}`)
@@ -84,14 +89,15 @@ export class PortalKeyboardService implements KeyboardService {
       yield* Effect.tryPromise({
         try: async () => {
           await self.portal.DeleteShortcut({
-            'session_handle': '',
-            'shortcut_id': shortcutId,
+            session_handle: '',
+            shortcut_id: shortcutId,
           })
         },
-        catch: (error) => new HotkeyRegistrationFailed({
-          hotkey: hotkeyKey,
-          reason: error instanceof Error ? error.message : String(error),
-        }),
+        catch: (error) =>
+          new HotkeyRegistrationFailed({
+            hotkey: hotkeyKey,
+            reason: error instanceof Error ? error.message : String(error),
+          }),
       })
 
       self.registeredHotkeys.delete(hotkeyKey)
@@ -116,15 +122,17 @@ export class PortalKeyboardService implements KeyboardService {
     const self = this
     return Effect.gen(function* () {
       for (const [hotkeyKey, shortcutId] of self.registeredHotkeys) {
-        yield* Effect.ignore(Effect.tryPromise({
-          try: async () => {
-            await self.portal?.DeleteShortcut({
-              'session_handle': '',
-              'shortcut_id': shortcutId,
-            })
-          },
-          catch: () => undefined,
-        }))
+        yield* Effect.ignore(
+          Effect.tryPromise({
+            try: async () => {
+              await self.portal?.DeleteShortcut({
+                session_handle: '',
+                shortcut_id: shortcutId,
+              })
+            },
+            catch: () => undefined,
+          }),
+        )
       }
 
       self.registeredHotkeys.clear()

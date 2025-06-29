@@ -1,11 +1,11 @@
-import { Effect } from 'effect'
-import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
 import type { DesktopEnvironment } from '@infrastructure/keyboard/DesktopIntegration.ts'
+import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
+import { Effect } from 'effect'
 
 export const generateManualSetupInstructions = (desktop: DesktopEnvironment) =>
   Effect.gen(function* () {
     const instructions = getDesktopInstructions(desktop)
-    
+
     yield* Effect.log(`
 📋 Manual Hotkey Setup Instructions
 
@@ -104,10 +104,10 @@ This method works on all desktop environments without additional configuration.
 
 export const checkHotkeyAvailability = Effect.gen(function* () {
   yield* Effect.log('🔍 Checking hotkey availability...')
-  
+
   // This would typically test if the hotkey can be registered
   // For now, we'll simulate a simple check
-  
+
   const canUseGlobalHotkeys = yield* Effect.sync(() => {
     // Check if we're in a graphical environment
     return Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY)

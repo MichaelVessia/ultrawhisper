@@ -1,6 +1,6 @@
-import { Effect } from 'effect'
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
+import { Effect } from 'effect'
 
 const execAsync = promisify(exec)
 
@@ -11,7 +11,9 @@ export const detectDesktopEnvironment = Effect.gen(function* () {
   const sessionDesktop = yield* Effect.sync(() => process.env.XDG_SESSION_DESKTOP?.toLowerCase())
   const sessionType = yield* Effect.sync(() => process.env.XDG_SESSION_TYPE?.toLowerCase())
 
-  yield* Effect.log(`Desktop detection: XDG_CURRENT_DESKTOP=${currentDesktop}, XDG_SESSION_DESKTOP=${sessionDesktop}, XDG_SESSION_TYPE=${sessionType}`)
+  yield* Effect.log(
+    `Desktop detection: XDG_CURRENT_DESKTOP=${currentDesktop}, XDG_SESSION_DESKTOP=${sessionDesktop}, XDG_SESSION_TYPE=${sessionType}`,
+  )
 
   if (currentDesktop?.includes('gnome') || sessionDesktop?.includes('gnome')) {
     return 'gnome' as const
@@ -44,7 +46,9 @@ export const checkDBusService = (serviceName: string) =>
   Effect.gen(function* () {
     return yield* Effect.tryPromise({
       try: async () => {
-        const { stdout } = await execAsync(`dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep -q "${serviceName}"`)
+        const { stdout } = await execAsync(
+          `dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep -q "${serviceName}"`,
+        )
         return true
       },
       catch: () => false,

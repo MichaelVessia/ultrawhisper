@@ -1,9 +1,9 @@
-import { Context, Effect, Layer, Stream } from 'effect'
-import dbus from 'dbus-next'
-import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
 import type { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { HotkeyRegistrationFailed, ServiceUnavailable } from '@domain/keyboard/KeyboardErrors.ts'
-import { RECORDING_HOTKEY_ACCELERATOR, DBUS_SERVICES, DBUS_PATHS } from '@shared/constants.ts'
+import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
+import { DBUS_PATHS, DBUS_SERVICES, RECORDING_HOTKEY_ACCELERATOR } from '@shared/constants.ts'
+import dbus from 'dbus-next'
+import { Context, Effect, Layer, Stream } from 'effect'
 
 export class GnomeKeyboardService implements KeyboardService {
   private bus: any = null
@@ -24,20 +24,28 @@ export class GnomeKeyboardService implements KeyboardService {
 
       self.gnomeShell = yield* Effect.tryPromise({
         try: async () => {
-          const gnomeShell = await self.bus!.getProxyObject(DBUS_SERVICES.GNOME_SHELL, DBUS_PATHS.GNOME_SHELL)
+          const gnomeShell = await self.bus!.getProxyObject(
+            DBUS_SERVICES.GNOME_SHELL,
+            DBUS_PATHS.GNOME_SHELL,
+          )
           return gnomeShell.getInterface(DBUS_SERVICES.GNOME_SHELL)
         },
-        catch: (error) => new ServiceUnavailable({
-          service: 'GNOME Shell',
-          details: error instanceof Error ? error.message : String(error),
-        }),
+        catch: (error) =>
+          new ServiceUnavailable({
+            service: 'GNOME Shell',
+            details: error instanceof Error ? error.message : String(error),
+          }),
       })
 
       self.gnomeShell.on('AcceleratorActivated', (actionId: number, deviceId: number) => {
-        console.log(`🔔 AcceleratorActivated signal received! ActionId: ${actionId}, DeviceId: ${deviceId}`)
+        console.log(
+          `🔔 AcceleratorActivated signal received! ActionId: ${actionId}, DeviceId: ${deviceId}`,
+        )
         console.log(`📋 Registered hotkeys:`, Array.from(self.registeredHotkeys.entries()))
-        
-        const hotkeyEntry = Array.from(self.registeredHotkeys.entries()).find(([, id]) => id === actionId)
+
+        const hotkeyEntry = Array.from(self.registeredHotkeys.entries()).find(
+          ([, id]) => id === actionId,
+        )
         if (hotkeyEntry && self.keyEventSubject) {
           const [hotkeyStr] = hotkeyEntry
           console.log(`✅ Found matching hotkey: ${hotkeyStr}`)
@@ -83,15 +91,19 @@ export class GnomeKeyboardService implements KeyboardService {
       })
 
       if (actionId === 0) {
-        yield* Effect.fail(new HotkeyRegistrationFailed({
-          hotkey: hotkeyKey,
-          reason: 'GNOME Shell returned invalid action ID',
-        }))
+        yield* Effect.fail(
+          new HotkeyRegistrationFailed({
+            hotkey: hotkeyKey,
+            reason: 'GNOME Shell returned invalid action ID',
+          }),
+        )
       }
 
       self.registeredHotkeys.set(hotkeyKey, actionId)
       yield* Effect.log(`Registered hotkey: ${hotkeyKey} with action ID: ${actionId}`)
-      console.log(`🔑 Hotkey registered - Key: ${hotkeyKey}, ActionID: ${actionId}, Accelerator: ${accelerator}`)
+      console.log(
+        `🔑 Hotkey registered - Key: ${hotkeyKey}, ActionID: ${actionId}, Accelerator: ${accelerator}`,
+      )
     })
   }
 
@@ -109,10 +121,11 @@ export class GnomeKeyboardService implements KeyboardService {
         try: async () => {
           await self.gnomeShell.UngrabAccelerator(actionId)
         },
-        catch: (error) => new HotkeyRegistrationFailed({
-          hotkey: hotkeyKey,
-          reason: error instanceof Error ? error.message : String(error),
-        }),
+        catch: (error) =>
+          new HotkeyRegistrationFailed({
+            hotkey: hotkeyKey,
+            reason: error instanceof Error ? error.message : String(error),
+          }),
       })
 
       self.registeredHotkeys.delete(hotkeyKey)
@@ -137,12 +150,14 @@ export class GnomeKeyboardService implements KeyboardService {
     const self = this
     return Effect.gen(function* () {
       for (const [hotkeyKey, actionId] of self.registeredHotkeys) {
-        yield* Effect.ignore(Effect.tryPromise({
-          try: async () => {
-            await self.gnomeShell?.UngrabAccelerator(actionId)
-          },
-          catch: () => undefined,
-        }))
+        yield* Effect.ignore(
+          Effect.tryPromise({
+            try: async () => {
+              await self.gnomeShell?.UngrabAccelerator(actionId)
+            },
+            catch: () => undefined,
+          }),
+        )
       }
 
       self.registeredHotkeys.clear()

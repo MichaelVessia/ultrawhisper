@@ -1,6 +1,6 @@
-import { Effect, Layer } from 'effect'
-import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { DesktopNotSupported, ServiceUnavailable } from '@domain/keyboard/KeyboardErrors.ts'
+import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
+import { Effect, Layer } from 'effect'
 import { detectDesktopEnvironment, getDesktopCapabilities } from './DesktopIntegration.ts'
 import { GnomeKeyboardServiceLive } from './GnomeKeyboardService.ts'
 import { PortalKeyboardServiceLive } from './PortalKeyboardService.ts'
