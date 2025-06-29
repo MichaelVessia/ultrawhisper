@@ -2,15 +2,19 @@ import { AudioService } from '@domain/audio/AudioService.ts'
 import { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { BunRuntime } from '@effect/platform-bun'
+import { BunAudioServiceLayer } from '@infrastructure/audio/BunAudioService.ts'
 import { KeyboardServiceFactory } from '@infrastructure/keyboard/KeyboardServiceFactory.ts'
 import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
-import { Console, Effect, Layer, Stream } from 'effect'
+import { Console, Effect, Layer, Ref, Stream } from 'effect'
 
 const program = Effect.gen(function* () {
   yield* Console.log('🎙️  UltraWhisper starting...')
 
-  const _audio = yield* AudioService
+  const audio = yield* AudioService
   const keyboard = yield* KeyboardService
+
+  // Track recording state
+  const isRecordingRef = yield* Ref.make(false)
 
   yield* Console.log('✅ Services initialized')
 
@@ -26,25 +30,35 @@ const program = Effect.gen(function* () {
   const keyStream = keyboard.keyEvents()
   yield* keyStream.pipe(
     Stream.tap((event) =>
-      Console.log(
-        `🔥 HOTKEY PRESSED! Key: ${event.key}, Modifiers: ${event.modifiers.join('+')}, Type: ${event.type}`,
-      ),
+      Effect.gen(function* () {
+        yield* Console.log(
+          `🔥 HOTKEY PRESSED! Key: ${event.key}, Modifiers: ${event.modifiers.join('+')}, Type: ${event.type}`,
+        )
+
+        const isRecording = yield* Ref.get(isRecordingRef)
+
+        if (!isRecording) {
+          // Start recording
+          yield* Console.log('🎤 Starting recording...')
+          yield* audio.startRecording
+          yield* Ref.set(isRecordingRef, true)
+          yield* Console.log('🔴 Recording started! Press hotkey again to stop.')
+        } else {
+          // Stop recording
+          yield* Console.log('⏹️  Stopping recording...')
+          const recording = yield* audio.stopRecording
+          yield* Ref.set(isRecordingRef, false)
+          yield* Console.log(
+            `✅ Recording stopped! Duration: ${recording.duration}ms, Size: ${recording.data.length} bytes`,
+          )
+        }
+      }),
     ),
     Stream.runDrain,
   )
 
   return 'UltraWhisper stopped'
 })
-
-const MockAudioService = Layer.succeed(
-  AudioService,
-  AudioService.of({
-    startRecording: Effect.void,
-    stopRecording: Effect.die('Not implemented'),
-    getAudioStream: Effect.die('Not implemented'),
-    saveRecording: () => Effect.void,
-  }),
-)
 
 const runnable = KeyboardServiceFactory.pipe(
   Effect.catchAll((error) =>
@@ -62,7 +76,7 @@ const runnable = KeyboardServiceFactory.pipe(
     }),
   ),
   Effect.flatMap((keyboardServiceLayer) => {
-    const mainLayer = Layer.mergeAll(MockAudioService, keyboardServiceLayer)
+    const mainLayer = Layer.mergeAll(BunAudioServiceLayer, keyboardServiceLayer)
     return program.pipe(Effect.provide(mainLayer))
   }),
 )
