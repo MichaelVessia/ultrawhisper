@@ -64,5 +64,3 @@ Service selection happens at runtime via `KeyboardServiceFactory` based on detec
 ## Development Notes
 - Uses 2-space indentation, single quotes, no semicolons (Biome config)
 - Entry point: `src/index.ts` → `src/main.ts`
-- Current milestone: Global hotkey detection (Milestone 2 complete)
-- Audio recording and Whisper integration are next milestones
