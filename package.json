@@ -1,0 +1,31 @@
+{
+  "name": "ultrawhisper",
+  "version": "0.1.0",
+  "description": "Minimalistic local-only voice transcription tool for Linux using Effect.ts",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build src/index.ts --outdir=dist --target=bun",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.6",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.87.1",
+    "@effect/platform-bun": "^0.72.3",
+    "@effect/schema": "^0.75.5",
+    "effect": "^3.16.10"
+  }
+}
