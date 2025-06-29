@@ -7,13 +7,10 @@ export class LinuxClipboardService implements ClipboardService {
       yield* Effect.tryPromise({
         try: async () => {
           // Use echo and xsel to write to clipboard
-          const proc = Bun.spawn(
-            ['sh', '-c', `echo ${JSON.stringify(text)} | xsel -b`],
-            {
-              stdout: 'pipe',
-              stderr: 'pipe',
-            },
-          )
+          const proc = Bun.spawn(['sh', '-c', `echo ${JSON.stringify(text)} | xsel -b`], {
+            stdout: 'pipe',
+            stderr: 'pipe',
+          })
 
           await proc.exited
 

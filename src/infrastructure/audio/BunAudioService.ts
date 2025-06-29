@@ -34,10 +34,13 @@ export class BunAudioService implements AudioService {
               // -f S16_LE: 16-bit signed little endian
               // -c 1: mono (Whisper works better with mono)
               // -t raw: output raw PCM data
-              const proc = Bun.spawn(['arecord', '-r', '16000', '-f', 'S16_LE', '-c', '1', '-t', 'raw'], {
-                stdout: 'pipe',
-                signal: controller.signal,
-              })
+              const proc = Bun.spawn(
+                ['arecord', '-r', '16000', '-f', 'S16_LE', '-c', '1', '-t', 'raw'],
+                {
+                  stdout: 'pipe',
+                  signal: controller.signal,
+                },
+              )
 
               if (proc.stdout) {
                 const reader = proc.stdout.getReader()

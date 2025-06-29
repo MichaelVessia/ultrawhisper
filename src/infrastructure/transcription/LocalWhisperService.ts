@@ -103,7 +103,12 @@ export class LocalWhisperService implements TranscriptionService {
 
           const processingTime = Milliseconds(Date.now() - startTime)
           const text =
-            Array.isArray(result) && result.length > 0 ? result[0]?.speech?.trim() || '' : ''
+            Array.isArray(result) && result.length > 0
+              ? result
+                  .map((segment) => segment.speech)
+                  .join(' ')
+                  .trim()
+              : ''
 
           if (text === '') {
             yield* Console.log('🤐 No speech detected in recording')
@@ -160,7 +165,12 @@ export class LocalWhisperService implements TranscriptionService {
 
           const processingTime = Milliseconds(Date.now() - startTime)
           const text =
-            Array.isArray(result) && result.length > 0 ? result[0]?.speech?.trim() || '' : ''
+            Array.isArray(result) && result.length > 0
+              ? result
+                  .map((segment) => segment.speech)
+                  .join(' ')
+                  .trim()
+              : ''
 
           if (text === '') {
             yield* Console.log('🤐 No speech detected in file')
