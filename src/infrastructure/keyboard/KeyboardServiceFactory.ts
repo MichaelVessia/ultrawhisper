@@ -10,14 +10,15 @@ export const KeyboardServiceFactory = Effect.gen(function* () {
 
   yield* Effect.log(`Desktop capabilities: ${JSON.stringify(capabilities)}`)
 
-  if (capabilities.hasGnomeShell && capabilities.desktop === 'gnome') {
-    yield* Effect.log('Using GNOME Shell keyboard service')
-    return GnomeKeyboardServiceLive
+  // Prioritize Desktop Portal as it's the standard cross-desktop approach
+  if (capabilities.hasPortal) {
+    yield* Effect.log('Using Desktop Portal keyboard service (standard approach)')
+    return PortalKeyboardServiceLive
   }
 
-  if (capabilities.hasPortal) {
-    yield* Effect.log('Using Desktop Portal keyboard service')
-    return PortalKeyboardServiceLive
+  if (capabilities.hasGnomeShell && capabilities.desktop === 'gnome') {
+    yield* Effect.log('Desktop Portal unavailable, trying GNOME Shell (may require extension)')
+    return GnomeKeyboardServiceLive
   }
 
   yield* Effect.log(`Desktop '${capabilities.desktop}' not supported, falling back to mock service`)

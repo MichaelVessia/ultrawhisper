@@ -34,15 +34,21 @@ export class GnomeKeyboardService implements KeyboardService {
       })
 
       self.gnomeShell.on('AcceleratorActivated', (actionId: number, deviceId: number) => {
+        console.log(`🔔 AcceleratorActivated signal received! ActionId: ${actionId}, DeviceId: ${deviceId}`)
+        console.log(`📋 Registered hotkeys:`, Array.from(self.registeredHotkeys.entries()))
+        
         const hotkeyEntry = Array.from(self.registeredHotkeys.entries()).find(([, id]) => id === actionId)
         if (hotkeyEntry && self.keyEventSubject) {
           const [hotkeyStr] = hotkeyEntry
+          console.log(`✅ Found matching hotkey: ${hotkeyStr}`)
           const event: KeyEvent = {
             key: hotkeyStr.includes('grave') ? '`' : hotkeyStr,
             modifiers: hotkeyStr.includes('Control') ? ['ctrl'] : [],
             type: 'down',
           }
           self.keyEventSubject(event)
+        } else {
+          console.log(`❌ No matching hotkey found for actionId: ${actionId}`)
         }
       })
     })
@@ -62,13 +68,18 @@ export class GnomeKeyboardService implements KeyboardService {
 
       const actionId = yield* Effect.tryPromise({
         try: async () => {
-          const result = await self.gnomeShell.GrabAccelerator(accelerator, 0)
+          console.log(`🔧 Attempting to grab accelerator: ${accelerator}`)
+          const result = await self.gnomeShell.GrabAccelerator(accelerator, 0, 0)
+          console.log(`📦 GrabAccelerator returned:`, result)
           return result
         },
-        catch: (error) => new HotkeyRegistrationFailed({
-          hotkey: hotkeyKey,
-          reason: error instanceof Error ? error.message : String(error),
-        }),
+        catch: (error) => {
+          console.error(`❌ GrabAccelerator failed:`, error)
+          return new HotkeyRegistrationFailed({
+            hotkey: hotkeyKey,
+            reason: error instanceof Error ? error.message : String(error),
+          })
+        },
       })
 
       if (actionId === 0) {
@@ -80,6 +91,7 @@ export class GnomeKeyboardService implements KeyboardService {
 
       self.registeredHotkeys.set(hotkeyKey, actionId)
       yield* Effect.log(`Registered hotkey: ${hotkeyKey} with action ID: ${actionId}`)
+      console.log(`🔑 Hotkey registered - Key: ${hotkeyKey}, ActionID: ${actionId}, Accelerator: ${accelerator}`)
     })
   }
 

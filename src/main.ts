@@ -2,7 +2,7 @@ import { AudioService } from '@domain/audio/AudioService.ts'
 import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { BunRuntime } from '@effect/platform-bun'
-import { Console, Effect, Layer } from 'effect'
+import { Console, Effect, Layer, Stream } from 'effect'
 import { KeyboardServiceFactory } from '@infrastructure/keyboard/KeyboardServiceFactory.ts'
 import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
 
@@ -20,8 +20,18 @@ const program = Effect.gen(function* () {
   yield* keyboard.registerHotkey(recordingHotkey)
   yield* Console.log('⌨️  Global hotkey registered successfully!')
   yield* Console.log(`🎤 Press ${DEFAULT_RECORDING_HOTKEY} to start/stop recording`)
+  yield* Console.log('👂 Listening for hotkey events... (Press Ctrl+C to exit)')
 
-  return 'UltraWhisper ready'
+  // Start listening for hotkey events and keep the app running
+  const keyStream = keyboard.keyEvents()
+  yield* keyStream.pipe(
+    Stream.tap((event) => 
+      Console.log(`🔥 HOTKEY PRESSED! Key: ${event.key}, Modifiers: ${event.modifiers.join('+')}, Type: ${event.type}`)
+    ),
+    Stream.runDrain
+  )
+
+  return 'UltraWhisper stopped'
 })
 
 const MockAudioService = Layer.succeed(
