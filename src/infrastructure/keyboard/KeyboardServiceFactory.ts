@@ -1,6 +1,7 @@
 import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { Effect, Layer } from 'effect'
 import { getDesktopCapabilities } from './DesktopIntegration.ts'
+import { GnomeCustomKeybindingServiceLive } from './GnomeCustomKeybindingService.ts'
 import { GnomeKeyboardServiceLive } from './GnomeKeyboardService.ts'
 import { PortalKeyboardServiceLive } from './PortalKeyboardService.ts'
 
@@ -9,15 +10,15 @@ export const KeyboardServiceFactory = Effect.gen(function* () {
 
   yield* Effect.log(`Desktop capabilities: ${JSON.stringify(capabilities)}`)
 
-  // Prioritize Desktop Portal as it's the standard cross-desktop approach
+  // For GNOME, use custom keybinding approach since direct accelerator grabbing is restricted
+  if (capabilities.desktop === 'gnome') {
+    yield* Effect.log('Using GNOME custom keybinding service (system-level shortcuts)')
+    return GnomeCustomKeybindingServiceLive
+  }
+
   if (capabilities.hasPortal) {
     yield* Effect.log('Using Desktop Portal keyboard service (standard approach)')
     return PortalKeyboardServiceLive
-  }
-
-  if (capabilities.hasGnomeShell && capabilities.desktop === 'gnome') {
-    yield* Effect.log('Desktop Portal unavailable, trying GNOME Shell (may require extension)')
-    return GnomeKeyboardServiceLive
   }
 
   yield* Effect.log(`Desktop '${capabilities.desktop}' not supported, falling back to mock service`)

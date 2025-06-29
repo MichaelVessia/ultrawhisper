@@ -15,7 +15,7 @@ interface DBusProxyObject {
 }
 
 interface DBusInterface {
-  GrabAccelerator(accelerator: string, flags: number): Promise<number>
+  GrabAccelerator(accelerator: string, modeFlags: number, grabFlags: number): Promise<number>
   UngrabAccelerator(action: number): Promise<boolean>
   on(event: string, callback: (actionId: number, deviceId: number) => void): void
 }
@@ -91,7 +91,9 @@ export class GnomeKeyboardService implements KeyboardService {
         try: async () => {
           console.log(`🔧 Attempting to grab accelerator: ${accelerator}`)
           if (!self.gnomeShell) throw new Error('GNOME Shell not connected')
-          const result = await self.gnomeShell.GrabAccelerator(accelerator, 0)
+          // GrabAccelerator expects: accelerator, modeFlags, grabFlags
+          // modeFlags: 0 = normal mode, grabFlags: 0 = default grab
+          const result = await self.gnomeShell.GrabAccelerator(accelerator, 0, 0)
           console.log(`📦 GrabAccelerator returned:`, result)
           return result
         },
