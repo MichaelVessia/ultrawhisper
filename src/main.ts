@@ -3,10 +3,13 @@ import { ClipboardService } from '@domain/clipboard/ClipboardService.ts'
 import { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { TranscriptionService } from '@domain/transcription/TranscriptionService.ts'
+import { TrayService } from '@domain/tray/TrayService.ts'
+import { TrayStatus } from '@domain/tray/TrayStatus.ts'
 import { BunRuntime } from '@effect/platform-bun'
 import { BunAudioServiceLayer } from '@infrastructure/audio/BunAudioService.ts'
 import { LinuxClipboardServiceLayer } from '@infrastructure/clipboard/LinuxClipboardService.ts'
 import { KeyboardServiceFactory } from '@infrastructure/keyboard/KeyboardServiceFactory.ts'
+import { ElectronTrayServiceLayer } from '@infrastructure/tray/ElectronTrayService.ts'
 import { LocalWhisperServiceLayer } from '@infrastructure/transcription/LocalWhisperService.ts'
 import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
 import { Console, Effect, Layer, Ref, Stream } from 'effect'
@@ -48,9 +51,25 @@ const program = Effect.gen(function* () {
   const keyboard = yield* KeyboardService
   const transcription = yield* TranscriptionService
   const clipboard = yield* ClipboardService
+  const tray = yield* TrayService
 
   // Check system dependencies
   yield* checkSystemDependencies
+
+  // Initialize tray if supported
+  const traySupported = yield* tray.isSupported()
+  if (traySupported) {
+    yield* Console.log('🖥️  System tray supported, initializing...')
+    yield* Effect.catchAll(tray.showTray(), (error) =>
+      Effect.gen(function* () {
+        yield* Console.log(`⚠️  Failed to initialize system tray: ${error}`)
+        yield* Console.log('💡 Continuing without tray support')
+      }),
+    )
+    yield* tray.updateStatus(TrayStatus.Idle)
+  } else {
+    yield* Console.log('💡 System tray not supported, using hotkey-only mode')
+  }
 
   // Track recording state
   const isRecordingRef = yield* Ref.make(false)
@@ -89,9 +108,11 @@ const program = Effect.gen(function* () {
         if (!isRecording) {
           // Start recording
           yield* Console.log('🎤 Starting recording...')
+          yield* Effect.catchAll(tray.updateStatus(TrayStatus.Recording), () => Effect.void)
           yield* Effect.catchAll(audio.startRecording, (error) =>
             Effect.gen(function* () {
               yield* Console.log(`❌ Failed to start recording: ${error}`)
+              yield* Effect.catchAll(tray.updateStatus(TrayStatus.Idle), () => Effect.void)
             }),
           )
           yield* Ref.set(isRecordingRef, true)
@@ -99,10 +120,12 @@ const program = Effect.gen(function* () {
         } else {
           // Stop recording
           yield* Console.log('⏹️  Stopping recording...')
+          yield* Effect.catchAll(tray.updateStatus(TrayStatus.Processing), () => Effect.void)
           const recording = yield* Effect.catchAll(audio.stopRecording, (error) =>
             Effect.gen(function* () {
               yield* Console.log(`❌ Failed to stop recording: ${error}`)
               yield* Ref.set(isRecordingRef, false)
+              yield* Effect.catchAll(tray.updateStatus(TrayStatus.Idle), () => Effect.void)
               return yield* Effect.die(error)
             }),
           )
@@ -116,6 +139,7 @@ const program = Effect.gen(function* () {
           const result = yield* Effect.catchAll(transcription.transcribe(recording), (error) =>
             Effect.gen(function* () {
               yield* Console.log(`❌ Transcription failed: ${error}`)
+              yield* Effect.catchAll(tray.updateStatus(TrayStatus.Idle), () => Effect.void)
               return yield* Effect.die(error)
             }),
           )
@@ -134,6 +158,7 @@ const program = Effect.gen(function* () {
             )
             yield* Console.log('✅ Text copied to clipboard!')
           }
+          yield* Effect.catchAll(tray.updateStatus(TrayStatus.Idle), () => Effect.void)
         }
       }),
     ),
@@ -164,6 +189,7 @@ const runnable = KeyboardServiceFactory.pipe(
       keyboardServiceLayer,
       LocalWhisperServiceLayer,
       LinuxClipboardServiceLayer,
+      ElectronTrayServiceLayer,
     )
     return program.pipe(Effect.provide(mainLayer))
   }),
