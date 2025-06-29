@@ -4,4 +4,4 @@ export const TrayStatus = {
   Processing: 'processing',
 } as const
 
-export type TrayStatus = typeof TrayStatus[keyof typeof TrayStatus]
+export type TrayStatus = (typeof TrayStatus)[keyof typeof TrayStatus]
