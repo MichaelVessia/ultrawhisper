@@ -3,6 +3,7 @@ import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { DesktopNotSupported, ServiceUnavailable } from '@domain/keyboard/KeyboardErrors.ts'
 import { detectDesktopEnvironment, getDesktopCapabilities } from './DesktopIntegration.ts'
 import { GnomeKeyboardServiceLive } from './GnomeKeyboardService.ts'
+import { PortalKeyboardServiceLive } from './PortalKeyboardService.ts'
 
 export const KeyboardServiceFactory = Effect.gen(function* () {
   const capabilities = yield* getDesktopCapabilities
@@ -15,9 +16,8 @@ export const KeyboardServiceFactory = Effect.gen(function* () {
   }
 
   if (capabilities.hasPortal) {
-    yield* Effect.log('GNOME Shell not available, would use Portal service (not implemented yet)')
-    // TODO: Return PortalKeyboardServiceLive when implemented
-    return MockKeyboardServiceLive
+    yield* Effect.log('Using Desktop Portal keyboard service')
+    return PortalKeyboardServiceLive
   }
 
   yield* Effect.log(`Desktop '${capabilities.desktop}' not supported, falling back to mock service`)
