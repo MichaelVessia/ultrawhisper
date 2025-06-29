@@ -52,9 +52,8 @@ export class LocalWhisperService implements TranscriptionService {
         const startTime = Date.now()
 
         if (!this.isModelInitialized) {
-          return yield* Effect.die(
-            new TranscriptionError('Model not initialized. Call initializeModel first.'),
-          )
+          yield* Console.log('❌ Model not initialized. Call initializeModel first.')
+          return TranscriptionResult.create('', 0.0, Milliseconds(0), 'en')
         }
 
         try {
@@ -71,7 +70,27 @@ export class LocalWhisperService implements TranscriptionService {
           yield* Effect.promise(() => Bun.write(tempFilePath, wavData))
 
           yield* Console.log('🔄 Transcribing audio...')
-          const result = yield* Effect.promise(() => whisper(tempFilePath))
+
+          // Wrap whisper call with detailed error handling
+          const result = yield* Effect.promise(async () => {
+            try {
+              const whisperResult = await whisper(tempFilePath)
+              console.log('📊 Raw Whisper result:', JSON.stringify(whisperResult, null, 2))
+              return whisperResult
+            } catch (error) {
+              console.error('❌ Whisper processing failed:', error)
+              // Check if it's the VTT parsing error we're expecting
+              if (
+                error instanceof Error &&
+                error.message.includes("null is not an object (evaluating 'lines.shift')")
+              ) {
+                console.log('🤐 No speech detected in audio (VTT parsing returned null)')
+                return [] // Return empty array to indicate no speech
+              }
+              console.error('❌ Unexpected whisper error:', error)
+              return [] // Return empty array on any other error
+            }
+          })
 
           // Clean up temp file
           yield* Effect.promise(() =>
@@ -86,6 +105,12 @@ export class LocalWhisperService implements TranscriptionService {
           const text =
             Array.isArray(result) && result.length > 0 ? result[0]?.speech?.trim() || '' : ''
 
+          if (text === '') {
+            yield* Console.log('🤐 No speech detected in recording')
+          } else {
+            yield* Console.log(`✅ Transcription complete: "${text}"`)
+          }
+
           return TranscriptionResult.create(
             text,
             1.0, // whisper-node doesn't expose confidence directly
@@ -93,7 +118,8 @@ export class LocalWhisperService implements TranscriptionService {
             'en',
           )
         } catch (error) {
-          return yield* Effect.die(new TranscriptionError('Transcription failed', error))
+          yield* Console.log(`❌ Transcription failed: ${error}`)
+          return TranscriptionResult.create('', 0.0, Milliseconds(Date.now() - startTime), 'en')
         }
       }.bind(this),
     )
@@ -104,22 +130,48 @@ export class LocalWhisperService implements TranscriptionService {
         const startTime = Date.now()
 
         if (!this.isModelInitialized) {
-          return yield* Effect.die(
-            new TranscriptionError('Model not initialized. Call initializeModel first.'),
-          )
+          yield* Console.log('❌ Model not initialized. Call initializeModel first.')
+          return TranscriptionResult.create('', 0.0, Milliseconds(0), 'en')
         }
 
         try {
           yield* Console.log(`🔄 Transcribing file: ${audioPath}`)
-          const result = yield* Effect.promise(() => whisper(audioPath))
+
+          // Wrap whisper call with detailed error handling
+          const result = yield* Effect.promise(async () => {
+            try {
+              const whisperResult = await whisper(audioPath)
+              console.log('📊 Raw Whisper result:', JSON.stringify(whisperResult, null, 2))
+              return whisperResult
+            } catch (error) {
+              console.error('❌ Whisper file processing failed:', error)
+              // Check if it's the VTT parsing error we're expecting
+              if (
+                error instanceof Error &&
+                error.message.includes("null is not an object (evaluating 'lines.shift')")
+              ) {
+                console.log('🤐 No speech detected in audio file (VTT parsing returned null)')
+                return [] // Return empty array to indicate no speech
+              }
+              console.error('❌ Unexpected whisper file error:', error)
+              return [] // Return empty array on any other error
+            }
+          })
 
           const processingTime = Milliseconds(Date.now() - startTime)
           const text =
             Array.isArray(result) && result.length > 0 ? result[0]?.speech?.trim() || '' : ''
 
+          if (text === '') {
+            yield* Console.log('🤐 No speech detected in file')
+          } else {
+            yield* Console.log(`✅ File transcription complete: "${text}"`)
+          }
+
           return TranscriptionResult.create(text, 1.0, processingTime, 'en')
         } catch (error) {
-          return yield* Effect.die(new TranscriptionError('File transcription failed', error))
+          yield* Console.log(`❌ File transcription failed: ${error}`)
+          return TranscriptionResult.create('', 0.0, Milliseconds(Date.now() - startTime), 'en')
         }
       }.bind(this),
     )

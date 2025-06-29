@@ -2,7 +2,6 @@ import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { Effect, Layer } from 'effect'
 import { getDesktopCapabilities } from './DesktopIntegration.ts'
 import { GnomeCustomKeybindingServiceLive } from './GnomeCustomKeybindingService.ts'
-import { GnomeKeyboardServiceLive } from './GnomeKeyboardService.ts'
 import { PortalKeyboardServiceLive } from './PortalKeyboardService.ts'
 
 export const KeyboardServiceFactory = Effect.gen(function* () {

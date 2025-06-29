@@ -16,7 +16,12 @@ interface DBusProxyObject {
 
 interface DBusInterface {
   CreateSession(options: Record<string, unknown>): Promise<[string, Record<string, unknown>]>
-  CreateShortcut(session_handle: string, shortcut_id: string, trigger: string, options: Record<string, unknown>): Promise<[string, Record<string, unknown>]>
+  CreateShortcut(
+    session_handle: string,
+    shortcut_id: string,
+    trigger: string,
+    options: Record<string, unknown>,
+  ): Promise<[string, Record<string, unknown>]>
   DeleteShortcut(session_handle: string, shortcut_id: string): Promise<void>
   on(event: string, callback: (...args: unknown[]) => void): void
 }
@@ -67,7 +72,7 @@ export class PortalKeyboardService implements KeyboardService {
         try: async () => {
           if (!self.portal) throw new Error('Portal not connected')
           const result = await self.portal.CreateSession({
-            handle_token: `ultrawhisper_${Date.now()}`
+            handle_token: `ultrawhisper_${Date.now()}`,
           })
           console.log('📦 CreateSession result:', result)
           return result
@@ -83,23 +88,28 @@ export class PortalKeyboardService implements KeyboardService {
 
       self.sessionHandle = sessionResult[0]
       console.log('✅ Session created with handle:', self.sessionHandle)
-      
+
       // Set up event listener for shortcut activation
       console.log('🎯 Setting up Activated event listener...')
       self.portal.on('Activated', (...args: unknown[]) => {
-        const [session, shortcut_id, timestamp, options] = args as [string, string, number, Record<string, unknown>]
+        const [session, shortcut_id, timestamp, _options] = args as [
+          string,
+          string,
+          number,
+          Record<string, unknown>,
+        ]
         console.log(`🚨 GLOBAL HOTKEY DETECTED! 🚨`)
         console.log(`📥 Shortcut activated: ${shortcut_id} in session ${session}`)
         console.log(`⏰ Timestamp: ${timestamp}`)
         console.log(`📋 Current session: ${self.sessionHandle}`)
         console.log(`🗝️  Registered hotkeys:`, Array.from(self.registeredHotkeys.entries()))
-        
+
         if (session === self.sessionHandle && self.keyEventSubject) {
           // Find the hotkey that matches this shortcut_id
           const hotkeyEntry = Array.from(self.registeredHotkeys.entries()).find(
             ([, id]) => id === shortcut_id,
           )
-          
+
           if (hotkeyEntry) {
             const [hotkeyStr] = hotkeyEntry
             console.log(`✅ Emitting key event for: ${hotkeyStr}`)
@@ -113,7 +123,9 @@ export class PortalKeyboardService implements KeyboardService {
             console.log(`❌ No matching hotkey found for shortcut_id: ${shortcut_id}`)
           }
         } else {
-          console.log(`❌ Session mismatch or no event subject: session=${session}, hasSubject=${!!self.keyEventSubject}`)
+          console.log(
+            `❌ Session mismatch or no event subject: session=${session}, hasSubject=${!!self.keyEventSubject}`,
+          )
         }
       })
     })
@@ -138,14 +150,16 @@ export class PortalKeyboardService implements KeyboardService {
           const shortcutId = `ultrawhisper-${hotkeyKey.replace(/[^a-zA-Z0-9]/g, '-')}`
 
           if (!self.portal || !self.sessionHandle) throw new Error('Desktop Portal not connected')
-          console.log(`🔧 Creating shortcut: session=${self.sessionHandle}, id=${shortcutId}, trigger=${DEFAULT_RECORDING_HOTKEY}`)
+          console.log(
+            `🔧 Creating shortcut: session=${self.sessionHandle}, id=${shortcutId}, trigger=${DEFAULT_RECORDING_HOTKEY}`,
+          )
           const result = await self.portal.CreateShortcut(
             self.sessionHandle,
             shortcutId,
             DEFAULT_RECORDING_HOTKEY,
             {
               description: `UltraWhisper: ${hotkeyKey}`,
-            }
+            },
           )
           console.log('📦 CreateShortcut result:', result)
 

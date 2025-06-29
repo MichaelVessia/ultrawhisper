@@ -1,12 +1,9 @@
-import type { Hotkey } from '@domain/keyboard/Hotkey.ts'
-import { HotkeyRegistrationFailed, ServiceUnavailable } from '@domain/keyboard/KeyboardErrors.ts'
-import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
-import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
-import { Effect, Layer, Stream } from 'effect'
-import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import type { Hotkey } from '@domain/keyboard/Hotkey.ts'
+import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
+import { Effect, Layer, Stream } from 'effect'
 
 export class GnomeCustomKeybindingService implements KeyboardService {
   private registeredHotkeys = new Map<string, string>()
@@ -18,7 +15,7 @@ export class GnomeCustomKeybindingService implements KeyboardService {
     const configDir = join(homedir(), '.config', 'ultrawhisper')
     this.triggerPath = join(configDir, 'trigger.sh')
     this.socketPath = join(configDir, 'hotkey.sock')
-    
+
     // Ensure config directory exists
     if (!existsSync(configDir)) {
       mkdirSync(configDir, { recursive: true })
@@ -39,20 +36,20 @@ echo "triggered" > "${this.socketPath}"
     const self = this
     return Effect.gen(function* () {
       console.log(`🔍 Setting up file watcher for: ${self.socketPath}`)
-      
+
       // Simple polling approach for now - check for file changes
       const checkForTrigger = () => {
         if (existsSync(self.socketPath) && self.keyEventSubject) {
           console.log('🚨 GLOBAL HOTKEY DETECTED via custom keybinding! 🚨')
-          
+
           // Remove trigger file
           try {
             const fs = require('node:fs')
             fs.unlinkSync(self.socketPath)
-          } catch (e) {
+          } catch (_e) {
             // Ignore errors
           }
-          
+
           // Emit key event
           const event: KeyEvent = {
             key: '`',
@@ -62,10 +59,10 @@ echo "triggered" > "${this.socketPath}"
           self.keyEventSubject(event)
         }
       }
-      
+
       // Poll every 100ms
       const interval = setInterval(checkForTrigger, 100)
-      
+
       return Effect.sync(() => {
         clearInterval(interval)
       })
@@ -76,7 +73,7 @@ echo "triggered" > "${this.socketPath}"
     const self = this
     return Effect.gen(function* () {
       console.log('🔧 GnomeCustomKeybindingService.registerHotkey called!')
-      
+
       const hotkeyKey = hotkey.toString()
       console.log(`🔑 Setting up trigger detection for: ${hotkeyKey}`)
 
@@ -87,7 +84,7 @@ echo "triggered" > "${this.socketPath}"
 
       // Create trigger script
       self.createTriggerScript()
-      
+
       // Show setup instructions
       console.log('')
       console.log('🔧 MANUAL SETUP REQUIRED:')
@@ -105,10 +102,10 @@ echo "triggered" > "${this.socketPath}"
       console.log('')
 
       self.registeredHotkeys.set(hotkeyKey, 'manual-setup')
-      
+
       // Start file watcher
       yield* self.setupFileWatcher()
-      
+
       yield* Effect.log(`Trigger detection ready for: ${hotkeyKey}`)
     })
   }
@@ -144,7 +141,7 @@ echo "triggered" > "${this.socketPath}"
 
   cleanup = () => {
     const self = this
-    return Effect.gen(function* () {
+    return Effect.sync(() => {
       // TODO: Remove custom keybindings from gsettings
       self.registeredHotkeys.clear()
     })
