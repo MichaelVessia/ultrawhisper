@@ -2,6 +2,8 @@
 
 A minimalistic, local-only voice transcription tool for Linux using Effect.ts, similar to SuperWhisper but focused on core functionality.
 
+⚠️ **Personal Project Notice**: This is currently purpose-built for my own Linux setup and workflow. While the core functionality works, it requires manual setup and may not work out-of-the-box on other systems. This is primarily a personal solution for voice-to-text (VTT) on Linux rather than a general-purpose tool ready for wider distribution.
+
 ## Tech Stack
 
 - **Runtime**: Bun
@@ -26,58 +28,53 @@ src/
 
 ## Usage
 
-### Global Hotkey
+**Current Status**: ✅ Core transcription pipeline works perfectly, but **requires manual hotkey setup** in your desktop environment.
 
-UltraWhisper automatically registers **Ctrl+`** as the global recording hotkey on supported desktop environments.
+### How it works:
+1. You manually configure a global hotkey in your desktop environment to run UltraWhisper
+2. Press your configured hotkey to start the app - it will begin recording immediately
+3. Press the same hotkey again (or let it run) to stop recording and get transcription  
+4. Transcribed text is automatically placed in your clipboard
 
-**Supported environments:**
-- ✅ **GNOME** (Ubuntu default) - Uses GNOME Shell DBus API
-- ✅ **KDE Plasma** - Uses Desktop Portal API  
-- ✅ **XFCE** - Uses Desktop Portal API
-- ✅ **Other Wayland compositors** - Uses Desktop Portal API
+### Setup Instructions
 
-**How it works:**
-1. Press `Ctrl+`` to start recording
-2. Press `Ctrl+`` again to stop recording and get transcription
-3. Text is automatically placed in your clipboard
+**Prerequisites:**
+- `arecord` (ALSA tools): `sudo apt install alsa-utils`
+- `xsel` (clipboard): `sudo apt install xsel`
+- Working microphone and audio system
 
-**Current Status**: ✅ **All core functionality is implemented and working!** The application successfully handles the complete pipeline from hotkey detection through audio recording to Whisper transcription and clipboard integration. The app runs as a background service and responds to the global hotkey.
+**Manual Hotkey Setup (Required):**
 
-### Manual Setup
+You need to set up a keyboard shortcut in your desktop environment to launch UltraWhisper:
 
-If automatic hotkey registration fails, you can set it up manually:
+**GNOME/Ubuntu:**
+1. Open Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts
+2. Add new shortcut:
+   - Name: UltraWhisper Record
+   - Command: `cd /path/to/ultrawhisper && bun run start`
+   - Shortcut: Choose your preferred key (e.g., `Ctrl+Alt+V`)
 
-**GNOME (Ubuntu):**
-```bash
-# Open Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts
-# Add new shortcut:
-# Name: UltraWhisper Record
-# Command: ultrawhisper --record  
-# Shortcut: Ctrl+`
-```
+**Other desktop environments:** Set up a custom keyboard shortcut to run the command above.
 
-**Other desktop environments:** Run the app and it will show specific instructions for your system.
+⚠️ **Note**: You must manually configure the hotkey in your desktop environment - UltraWhisper does not automatically register global hotkeys.
 
-## What's Implemented
+## What Works (On My System)
 
-✅ **Complete voice transcription pipeline:**
-- Global hotkey registration (`Ctrl+``) with multi-desktop support
+✅ **Core transcription pipeline:**
 - Audio recording via ALSA (arecord) in 16kHz mono format optimized for Whisper
 - Local Whisper model integration using whisper-node (no cloud dependency)
-- Automatic clipboard integration using xsel
-- Real-time user feedback and error handling
+- Clipboard integration using xsel
+- Real-time console feedback and error handling
 
-✅ **Cross-desktop Linux support:**
-- GNOME Shell (Ubuntu default) via DBus API
-- KDE Plasma via Desktop Portal API  
-- XFCE and other environments via Desktop Portal API
-- Automatic desktop environment detection and fallback
+✅ **Hotkey functionality:**
+- Responds to hotkey events (when manually configured in desktop environment)
+- Toggle recording functionality (press hotkey to start/stop)
 
-✅ **System integration:**
-- Background service mode - runs continuously listening for hotkey
-- System dependency checking (arecord, xsel)
-- Proper audio format handling and Whisper model initialization
-- Memory-efficient streaming architecture using Effect.ts
+🔧 **Setup requirements:**
+- Manual hotkey configuration in desktop environment (user responsibility)
+- Tested primarily on Ubuntu/GNOME
+- May require tweaking for different audio setups
+- No configuration file support yet
 
 ## Development
 
@@ -121,10 +118,17 @@ See [plans/](./plans/) directory for detailed implementation plans.
 - [x] **Milestone 4**: Local Whisper Integration ✅
 - [x] **Milestone 5**: Clipboard Integration ✅
 
-**🎉 Core application is complete and functional!**
+**🎯 Core transcription works, but needs polish for general use**
 
-### Future Milestones
-- [ ] **Milestone 7**: Configuration Management
-- [ ] **Milestone 8**: Transcription Modes
-- [ ] **Milestone 9**: Performance Optimization
-- [ ] **Milestone 10**: Polish & Error Handling
+### To Make This Generally Usable
+- [ ] **Better Documentation**: Step-by-step setup guide for different Linux distros
+- [ ] **Reliable Hotkey Setup**: Fix automatic global hotkey registration across DEs
+- [ ] **Configuration System**: Config files for audio settings, hotkeys, etc.
+- [ ] **Installation Script**: Automated dependency checking and setup
+- [ ] **Error Handling**: User-friendly error messages and recovery
+- [ ] **Testing**: Validation across different Linux environments
+
+### Future Enhancements  
+- [ ] **Transcription Modes**: Different Whisper model sizes, languages
+- [ ] **Performance Optimization**: Faster startup, model caching
+- [ ] **Advanced Features**: Custom hotkeys, output formatting options
