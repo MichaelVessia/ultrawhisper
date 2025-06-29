@@ -27,32 +27,37 @@ export class BunAudioService implements AudioService {
 
       // Start arecord process in background to collect audio data
       Effect.runFork(
-        Effect.gen((function* (this: BunAudioService) {
-          try {
-            // Use arecord to capture raw PCM audio data
-            // -f cd: CD quality (16-bit, 44.1kHz, stereo)  
-            // -t raw: output raw PCM data
-            const proc = Bun.spawn(['arecord', '-f', 'cd', '-t', 'raw'], {
-              stdout: 'pipe',
-              signal: controller.signal,
-            })
-            
-            if (proc.stdout) {
-              const reader = proc.stdout.getReader()
-              
-              while (!controller.signal.aborted) {
-                const result = yield* Effect.promise(() => reader.read())
-                if (result.done) break
-                
-                if (result.value) {
-                  yield* Ref.update(this.audioDataRef, (chunks) => [...chunks, new Uint8Array(result.value)])
+        Effect.gen(
+          function* (this: BunAudioService) {
+            try {
+              // Use arecord to capture raw PCM audio data
+              // -f cd: CD quality (16-bit, 44.1kHz, stereo)
+              // -t raw: output raw PCM data
+              const proc = Bun.spawn(['arecord', '-f', 'cd', '-t', 'raw'], {
+                stdout: 'pipe',
+                signal: controller.signal,
+              })
+
+              if (proc.stdout) {
+                const reader = proc.stdout.getReader()
+
+                while (!controller.signal.aborted) {
+                  const result = yield* Effect.promise(() => reader.read())
+                  if (result.done) break
+
+                  if (result.value) {
+                    yield* Ref.update(this.audioDataRef, (chunks) => [
+                      ...chunks,
+                      new Uint8Array(result.value),
+                    ])
+                  }
                 }
               }
+            } catch (error) {
+              // Recording stopped or failed
             }
-          } catch (error) {
-            // Recording stopped or failed
-          }
-        }).bind(this))
+          }.bind(this),
+        ),
       )
     }.bind(this),
   )
@@ -116,14 +121,14 @@ export class BunAudioService implements AudioService {
           emit.single(latestChunk)
         }
       }
-      
+
       if (!currentProcess.signal.aborted) {
         setTimeout(checkForNewData, 100) // Check every 100ms
       } else {
         emit.end()
       }
     }
-    
+
     checkForNewData()
   })
 
