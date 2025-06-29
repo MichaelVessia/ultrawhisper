@@ -20,10 +20,8 @@ export const KeyboardServiceFactory = Effect.gen(function* () {
     return MockKeyboardServiceLive
   }
 
-  yield* Effect.fail(new DesktopNotSupported({
-    desktop: capabilities.desktop,
-    availableDesktops: capabilities.supportedMethods,
-  }))
+  yield* Effect.log(`Desktop '${capabilities.desktop}' not supported, falling back to mock service`)
+  return MockKeyboardServiceLive
 })
 
 export const MockKeyboardServiceLive = Layer.succeed(
@@ -31,6 +29,6 @@ export const MockKeyboardServiceLive = Layer.succeed(
   KeyboardService.of({
     registerHotkey: () => Effect.log('Mock: registerHotkey called'),
     unregisterHotkey: () => Effect.log('Mock: unregisterHotkey called'),
-    keyEvents: Effect.die('Mock: keyEvents not implemented'),
+    keyEvents: () => Effect.die('Mock: keyEvents not implemented'),
   }),
 )

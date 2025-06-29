@@ -8,9 +8,9 @@ export type KeyEvent = {
 }
 
 export interface KeyboardService {
-  readonly registerHotkey: (hotkey: Hotkey) => Effect.Effect<void, unknown>
-  readonly unregisterHotkey: (hotkey: Hotkey) => Effect.Effect<void, unknown>
-  readonly keyEvents: Stream.Stream<KeyEvent, unknown>
+  readonly registerHotkey: (hotkey: Hotkey) => Effect.Effect<void, unknown, unknown>
+  readonly unregisterHotkey: (hotkey: Hotkey) => Effect.Effect<void, unknown, unknown>
+  readonly keyEvents: () => Stream.Stream<KeyEvent, unknown, unknown>
 }
 
 export const KeyboardService = Context.GenericTag<KeyboardService>('KeyboardService')
