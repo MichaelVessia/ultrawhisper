@@ -3,6 +3,7 @@ import dbus from 'dbus-next'
 import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
 import type { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { HotkeyRegistrationFailed, ServiceUnavailable } from '@domain/keyboard/KeyboardErrors.ts'
+import { RECORDING_HOTKEY_ACCELERATOR, DBUS_SERVICES, DBUS_PATHS } from '@shared/constants.ts'
 
 export class GnomeKeyboardService implements KeyboardService {
   private bus: any = null
@@ -10,7 +11,7 @@ export class GnomeKeyboardService implements KeyboardService {
   private registeredHotkeys = new Map<string, number>()
   private keyEventSubject: ((event: KeyEvent) => void) | null = null
 
-  private readonly RECORDING_HOTKEY = '<Control>grave' // Ctrl+`
+  private readonly RECORDING_HOTKEY = RECORDING_HOTKEY_ACCELERATOR
 
   constructor() {}
 
@@ -21,8 +22,8 @@ export class GnomeKeyboardService implements KeyboardService {
 
     this.gnomeShell = yield* Effect.tryPromise({
       try: async () => {
-        const gnomeShell = await this.bus!.getProxyObject('org.gnome.Shell', '/org/gnome/Shell')
-        return gnomeShell.getInterface('org.gnome.Shell')
+        const gnomeShell = await this.bus!.getProxyObject(DBUS_SERVICES.GNOME_SHELL, DBUS_PATHS.GNOME_SHELL)
+        return gnomeShell.getInterface(DBUS_SERVICES.GNOME_SHELL)
       },
       catch: (error) => new ServiceUnavailable({
         service: 'GNOME Shell',
