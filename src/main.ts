@@ -1,9 +1,11 @@
 import { AudioService } from '@domain/audio/AudioService.ts'
+import { ClipboardService } from '@domain/clipboard/ClipboardService.ts'
 import { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { TranscriptionService } from '@domain/transcription/TranscriptionService.ts'
 import { BunRuntime } from '@effect/platform-bun'
 import { BunAudioServiceLayer } from '@infrastructure/audio/BunAudioService.ts'
+import { LinuxClipboardServiceLayer } from '@infrastructure/clipboard/LinuxClipboardService.ts'
 import { KeyboardServiceFactory } from '@infrastructure/keyboard/KeyboardServiceFactory.ts'
 import { LocalWhisperServiceLayer } from '@infrastructure/transcription/LocalWhisperService.ts'
 import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
@@ -15,6 +17,7 @@ const program = Effect.gen(function* () {
   const audio = yield* AudioService
   const keyboard = yield* KeyboardService
   const transcription = yield* TranscriptionService
+  const clipboard = yield* ClipboardService
 
   // Track recording state
   const isRecordingRef = yield* Ref.make(false)
@@ -66,6 +69,11 @@ const program = Effect.gen(function* () {
             yield* Console.log('🤐 No speech detected in recording')
           } else {
             yield* Console.log(`📝 Transcription (${result.processingTime}ms): "${result.text}"`)
+            
+            // Copy to clipboard
+            yield* Console.log('📋 Copying to clipboard...')
+            yield* clipboard.writeText(result.text)
+            yield* Console.log('✅ Text copied to clipboard!')
           }
         }
       }),
@@ -96,6 +104,7 @@ const runnable = KeyboardServiceFactory.pipe(
       BunAudioServiceLayer,
       keyboardServiceLayer,
       LocalWhisperServiceLayer,
+      LinuxClipboardServiceLayer,
     )
     return program.pipe(Effect.provide(mainLayer))
   }),
