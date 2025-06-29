@@ -8,12 +8,12 @@ import { TranscriptionService } from '@domain/transcription/TranscriptionService
 import { createWavFile } from '@shared/audio-utils.ts'
 import type { FilePath } from '@shared/types.ts'
 import { Milliseconds } from '@shared/types.ts'
-import { type Pipeline, pipeline } from '@xenova/transformers'
+import whisper from 'whisper-node'
 import { Console, Effect, Layer } from 'effect'
 
 export class LocalWhisperService implements TranscriptionService {
   private readonly tempDir: string
-  private transcriber: Pipeline | null = null
+  private isModelInitialized = false
 
   constructor() {
     this.tempDir = join(homedir(), '.ultrawhisper', 'temp')
@@ -29,14 +29,12 @@ export class LocalWhisperService implements TranscriptionService {
       yield* Console.log('🤖 Initializing Whisper model...')
 
       try {
-        if (!this.transcriber) {
-          yield* Console.log('📥 Loading Whisper model (first time may take a moment)...')
-          this.transcriber = yield* Effect.promise(() =>
-            pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en'),
-          )
-          yield* Console.log('✅ Model loaded successfully')
+        if (!this.isModelInitialized) {
+          yield* Console.log('📥 Whisper model ready (using whisper.cpp)')
+          this.isModelInitialized = true
+          yield* Console.log('✅ Model ready for transcription')
         } else {
-          yield* Console.log('✅ Model already loaded')
+          yield* Console.log('✅ Model already ready')
         }
       } catch (error) {
         return yield* Effect.die(
@@ -46,14 +44,14 @@ export class LocalWhisperService implements TranscriptionService {
     }.bind(this),
   )
 
-  readonly isModelReady = Effect.succeed(this.transcriber !== null)
+  readonly isModelReady = Effect.succeed(this.isModelInitialized)
 
   readonly transcribe = (recording: AudioRecording) =>
     Effect.gen(
       function* (this: LocalWhisperService) {
         const startTime = Date.now()
 
-        if (!this.transcriber) {
+        if (!this.isModelInitialized) {
           return yield* Effect.die(
             new TranscriptionError('Model not initialized. Call initializeModel first.'),
           )
@@ -73,7 +71,7 @@ export class LocalWhisperService implements TranscriptionService {
           yield* Effect.promise(() => Bun.write(tempFilePath, wavData))
 
           yield* Console.log('🔄 Transcribing audio...')
-          const result = yield* Effect.promise(() => this.transcriber!(tempFilePath))
+          const result = yield* Effect.promise(() => whisper(tempFilePath))
 
           // Clean up temp file
           yield* Effect.promise(() =>
@@ -85,14 +83,13 @@ export class LocalWhisperService implements TranscriptionService {
           )
 
           const processingTime = Milliseconds(Date.now() - startTime)
-          const text =
-            typeof result === 'object' && result && 'text' in result
-              ? String(result.text).trim()
-              : String(result).trim()
+          const text = Array.isArray(result) && result.length > 0 
+            ? result[0].speech?.trim() || ''
+            : ''
 
           return TranscriptionResult.create(
             text,
-            1.0, // Transformers.js doesn't expose confidence directly
+            1.0, // whisper-node doesn't expose confidence directly
             processingTime,
             'en',
           )
@@ -107,7 +104,7 @@ export class LocalWhisperService implements TranscriptionService {
       function* (this: LocalWhisperService) {
         const startTime = Date.now()
 
-        if (!this.transcriber) {
+        if (!this.isModelInitialized) {
           return yield* Effect.die(
             new TranscriptionError('Model not initialized. Call initializeModel first.'),
           )
@@ -115,13 +112,12 @@ export class LocalWhisperService implements TranscriptionService {
 
         try {
           yield* Console.log(`🔄 Transcribing file: ${audioPath}`)
-          const result = yield* Effect.promise(() => this.transcriber!(audioPath))
+          const result = yield* Effect.promise(() => whisper(audioPath))
 
           const processingTime = Milliseconds(Date.now() - startTime)
-          const text =
-            typeof result === 'object' && result && 'text' in result
-              ? String(result.text).trim()
-              : String(result).trim()
+          const text = Array.isArray(result) && result.length > 0 
+            ? result[0].speech?.trim() || ''
+            : ''
 
           return TranscriptionResult.create(text, 1.0, processingTime, 'en')
         } catch (error) {
