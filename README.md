@@ -37,9 +37,11 @@ UltraWhisper automatically registers **Ctrl+`** as the global recording hotkey o
 - ✅ **Other Wayland compositors** - Uses Desktop Portal API
 
 **How it works:**
-1. Press and hold `Ctrl+`` to start recording
-2. Release to stop recording and get transcription
+1. Press `Ctrl+`` to start recording
+2. Press `Ctrl+`` again to stop recording and get transcription
 3. Text is automatically placed in your clipboard
+
+**Current Status**: Core functionality is implemented and working. The application successfully handles the complete pipeline from hotkey detection through audio recording to transcription and clipboard integration.
 
 ### Manual Setup
 
@@ -101,9 +103,9 @@ See [plans/](./plans/) directory for detailed implementation plans.
 
 - [x] Milestone 1: Project Setup & Basic Effect.ts Structure
 - [x] Milestone 2: Global Hotkey Detection
-- [ ] Milestone 3: Audio Recording
-- [ ] Milestone 4: Local Whisper Integration
-- [ ] Milestone 5: Clipboard Integration
+- [x] Milestone 3: Audio Recording
+- [x] Milestone 4: Local Whisper Integration
+- [x] Milestone 5: Clipboard Integration
 - [ ] Milestone 6: System Tray Integration
 - [ ] Milestone 7: Configuration Management
 - [ ] Milestone 8: Transcription Modes

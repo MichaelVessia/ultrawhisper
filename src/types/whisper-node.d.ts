@@ -1,2 +1,8 @@
-// This file is no longer needed as we're using @xenova/transformers
-// Left as placeholder for future reference
+declare module 'whisper-node' {
+  interface WhisperResult {
+    speech: string
+  }
+
+  function whisper(audioPath: string): Promise<WhisperResult[]>
+  export default whisper
+}

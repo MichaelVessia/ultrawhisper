@@ -8,8 +8,8 @@ import { TranscriptionService } from '@domain/transcription/TranscriptionService
 import { createWavFile } from '@shared/audio-utils.ts'
 import type { FilePath } from '@shared/types.ts'
 import { Milliseconds } from '@shared/types.ts'
-import whisper from 'whisper-node'
 import { Console, Effect, Layer } from 'effect'
+import whisper from 'whisper-node'
 
 export class LocalWhisperService implements TranscriptionService {
   private readonly tempDir: string
@@ -83,9 +83,8 @@ export class LocalWhisperService implements TranscriptionService {
           )
 
           const processingTime = Milliseconds(Date.now() - startTime)
-          const text = Array.isArray(result) && result.length > 0 
-            ? result[0].speech?.trim() || ''
-            : ''
+          const text =
+            Array.isArray(result) && result.length > 0 ? result[0]?.speech?.trim() || '' : ''
 
           return TranscriptionResult.create(
             text,
@@ -115,9 +114,8 @@ export class LocalWhisperService implements TranscriptionService {
           const result = yield* Effect.promise(() => whisper(audioPath))
 
           const processingTime = Milliseconds(Date.now() - startTime)
-          const text = Array.isArray(result) && result.length > 0 
-            ? result[0].speech?.trim() || ''
-            : ''
+          const text =
+            Array.isArray(result) && result.length > 0 ? result[0]?.speech?.trim() || '' : ''
 
           return TranscriptionResult.create(text, 1.0, processingTime, 'en')
         } catch (error) {
