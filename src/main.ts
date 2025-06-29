@@ -27,16 +27,16 @@ const checkSystemDependencies = Effect.gen(function* () {
       }),
   )
 
-  // Check for xclip (clipboard)
+  // Check for xsel (clipboard)
   yield* Effect.catchAll(
     Effect.tryPromise({
-      try: () => Bun.spawn(['which', 'xclip']).exited,
-      catch: () => new Error('xclip not found'),
+      try: () => Bun.spawn(['which', 'xsel']).exited,
+      catch: () => new Error('xsel not found'),
     }),
     (_error) =>
       Effect.gen(function* () {
-        yield* Console.log('⚠️  xclip not found - clipboard integration may not work')
-        yield* Console.log('💡 Install: sudo apt install xclip')
+        yield* Console.log('⚠️  xsel not found - clipboard integration may not work')
+        yield* Console.log('💡 Install: sudo apt install xsel')
       }),
   )
 })
@@ -129,12 +129,16 @@ const program = Effect.gen(function* () {
 
             // Copy to clipboard
             yield* Console.log('📋 Copying to clipboard...')
-            yield* Effect.catchAll(clipboard.writeText(result.text), (error) =>
-              Effect.gen(function* () {
-                yield* Console.log(`⚠️  Failed to copy to clipboard: ${error}`)
-              }),
-            )
-            yield* Console.log('✅ Text copied to clipboard!')
+            yield* Effect.matchEffect(clipboard.writeText(result.text), {
+              onFailure: (error) =>
+                Effect.gen(function* () {
+                  yield* Console.log(`⚠️  Failed to copy to clipboard: ${error}`)
+                }),
+              onSuccess: () =>
+                Effect.gen(function* () {
+                  yield* Console.log('✅ Text copied to clipboard!')
+                }),
+            })
           }
         }
       }),

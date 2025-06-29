@@ -6,9 +6,9 @@ export class LinuxClipboardService implements ClipboardService {
     Effect.gen(function* () {
       yield* Effect.tryPromise({
         try: async () => {
-          // Use echo and xclip to write to clipboard
+          // Use echo and xsel to write to clipboard
           const proc = Bun.spawn(
-            ['sh', '-c', `echo ${JSON.stringify(text)} | xclip -selection clipboard`],
+            ['sh', '-c', `echo ${JSON.stringify(text)} | xsel -b`],
             {
               stdout: 'pipe',
               stderr: 'pipe',
@@ -19,7 +19,7 @@ export class LinuxClipboardService implements ClipboardService {
 
           if (proc.exitCode !== 0) {
             const error = await new Response(proc.stderr).text()
-            throw new Error(`xclip failed with exit code ${proc.exitCode}: ${error}`)
+            throw new Error(`xsel failed with exit code ${proc.exitCode}: ${error}`)
           }
         },
         catch: (error) => new ClipboardError('Failed to write to clipboard', error),
@@ -28,8 +28,8 @@ export class LinuxClipboardService implements ClipboardService {
 
   readonly readText = Effect.tryPromise({
     try: async () => {
-      // Use xclip to read from clipboard
-      const proc = Bun.spawn(['xclip', '-selection', 'clipboard', '-o'], {
+      // Use xsel to read from clipboard
+      const proc = Bun.spawn(['xsel', '-b'], {
         stdout: 'pipe',
       })
 
@@ -37,7 +37,7 @@ export class LinuxClipboardService implements ClipboardService {
       await proc.exited
 
       if (proc.exitCode !== 0) {
-        throw new Error(`xclip failed with exit code ${proc.exitCode}`)
+        throw new Error(`xsel failed with exit code ${proc.exitCode}`)
       }
 
       return output
