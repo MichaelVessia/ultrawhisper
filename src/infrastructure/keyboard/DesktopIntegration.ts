@@ -46,7 +46,7 @@ export const checkDBusService = (serviceName: string) =>
   Effect.gen(function* () {
     return yield* Effect.tryPromise({
       try: async () => {
-        const { stdout } = await execAsync(
+        await execAsync(
           `dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep -q "${serviceName}"`,
         )
         return true

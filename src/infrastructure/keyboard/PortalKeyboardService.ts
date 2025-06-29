@@ -3,15 +3,34 @@ import { HotkeyRegistrationFailed, ServiceUnavailable } from '@domain/keyboard/K
 import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
 import { DBUS_SERVICES, DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
 import dbus from 'dbus-next'
-import { Context, Effect, Layer, Stream } from 'effect'
+import { Effect, Layer, Stream } from 'effect'
+
+interface DBusConnection {
+  getProxyObject(serviceName: string, objectPath: string): Promise<DBusProxyObject>
+  disconnect(): void
+}
+
+interface DBusProxyObject {
+  getInterface(interfaceName: string): DBusInterface
+}
+
+interface DBusInterface {
+  CreateSession(options: Record<string, unknown>): Promise<{ session_handle: string }>
+  RegisterShortcut(
+    session_handle: string,
+    shortcut_id: string,
+    shortcut: Record<string, unknown>,
+    options: Record<string, unknown>,
+  ): Promise<void>
+  UnregisterShortcut(session_handle: string, shortcut_id: string): Promise<void>
+  on(event: string, callback: (...args: unknown[]) => void): void
+}
 
 export class PortalKeyboardService implements KeyboardService {
-  private bus: any = null
-  private portal: any = null
+  private bus: DBusConnection | null = null
+  private portal: DBusInterface | null = null
   private registeredHotkeys = new Map<string, string>()
   private keyEventSubject: ((event: KeyEvent) => void) | null = null
-
-  constructor() {}
 
   private connectToPortal = () => {
     const self = this
@@ -121,7 +140,7 @@ export class PortalKeyboardService implements KeyboardService {
   private cleanup = () => {
     const self = this
     return Effect.gen(function* () {
-      for (const [hotkeyKey, shortcutId] of self.registeredHotkeys) {
+      for (const [_hotkeyKey, shortcutId] of self.registeredHotkeys) {
         yield* Effect.ignore(
           Effect.tryPromise({
             try: async () => {
@@ -148,7 +167,7 @@ export const PortalKeyboardServiceLive = Layer.effect(
   Effect.gen(function* () {
     const service = new PortalKeyboardService()
 
-    yield* Effect.addFinalizer(() => service['cleanup']())
+    yield* Effect.addFinalizer(() => service.cleanup())
 
     return KeyboardService.of(service)
   }),

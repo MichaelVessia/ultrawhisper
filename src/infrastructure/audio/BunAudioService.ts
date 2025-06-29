@@ -2,7 +2,6 @@ import { AudioRecording } from '@domain/audio/AudioRecording.ts'
 import { AudioService } from '@domain/audio/AudioService.ts'
 import type { FilePath } from '@shared/types.ts'
 import { Milliseconds } from '@shared/types.ts'
-import { $ } from 'bun'
 import { Effect, Layer, Ref, Stream } from 'effect'
 
 export class BunAudioService implements AudioService {
@@ -53,7 +52,7 @@ export class BunAudioService implements AudioService {
                   }
                 }
               }
-            } catch (error) {
+            } catch (_error) {
               // Recording stopped or failed
             }
           }.bind(this),

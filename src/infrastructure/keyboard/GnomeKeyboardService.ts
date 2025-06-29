@@ -3,17 +3,30 @@ import { HotkeyRegistrationFailed, ServiceUnavailable } from '@domain/keyboard/K
 import { KeyboardService, type KeyEvent } from '@domain/keyboard/KeyboardService.ts'
 import { DBUS_PATHS, DBUS_SERVICES, RECORDING_HOTKEY_ACCELERATOR } from '@shared/constants.ts'
 import dbus from 'dbus-next'
-import { Context, Effect, Layer, Stream } from 'effect'
+import { Effect, Layer, Stream } from 'effect'
+
+interface DBusConnection {
+  getProxyObject(serviceName: string, objectPath: string): Promise<DBusProxyObject>
+  disconnect(): void
+}
+
+interface DBusProxyObject {
+  getInterface(interfaceName: string): DBusInterface
+}
+
+interface DBusInterface {
+  GrabAccelerator(accelerator: string, flags: number): Promise<number>
+  UngrabAccelerator(action: number): Promise<boolean>
+  on(event: string, callback: (...args: unknown[]) => void): void
+}
 
 export class GnomeKeyboardService implements KeyboardService {
-  private bus: any = null
-  private gnomeShell: any = null
+  private bus: DBusConnection | null = null
+  private gnomeShell: DBusInterface | null = null
   private registeredHotkeys = new Map<string, number>()
   private keyEventSubject: ((event: KeyEvent) => void) | null = null
 
   private readonly RECORDING_HOTKEY = RECORDING_HOTKEY_ACCELERATOR
-
-  constructor() {}
 
   private connectToDBus = () => {
     const self = this
@@ -149,7 +162,7 @@ export class GnomeKeyboardService implements KeyboardService {
   private cleanup = () => {
     const self = this
     return Effect.gen(function* () {
-      for (const [hotkeyKey, actionId] of self.registeredHotkeys) {
+      for (const [_hotkeyKey, actionId] of self.registeredHotkeys) {
         yield* Effect.ignore(
           Effect.tryPromise({
             try: async () => {
@@ -173,7 +186,7 @@ export const GnomeKeyboardServiceLive = Layer.effect(
   Effect.gen(function* () {
     const service = new GnomeKeyboardService()
 
-    yield* Effect.addFinalizer(() => service['cleanup']())
+    yield* Effect.addFinalizer(() => service.cleanup())
 
     return KeyboardService.of(service)
   }),

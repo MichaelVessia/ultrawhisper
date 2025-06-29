@@ -2,11 +2,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { AudioRecording } from '@domain/audio/AudioRecording.ts'
-import {
-  type AudioFormatError,
-  type ModelNotFoundError,
-  TranscriptionError,
-} from '@domain/transcription/TranscriptionErrors.ts'
+import { TranscriptionError } from '@domain/transcription/TranscriptionErrors.ts'
 import { TranscriptionResult } from '@domain/transcription/TranscriptionResult.ts'
 import { TranscriptionService } from '@domain/transcription/TranscriptionService.ts'
 import { createWavFile } from '@shared/audio-utils.ts'
@@ -50,11 +46,7 @@ export class LocalWhisperService implements TranscriptionService {
     }.bind(this),
   )
 
-  readonly isModelReady = Effect.gen(
-    function* (this: LocalWhisperService) {
-      return this.transcriber !== null
-    }.bind(this),
-  )
+  readonly isModelReady = Effect.succeed(this.transcriber !== null)
 
   readonly transcribe = (recording: AudioRecording) =>
     Effect.gen(
