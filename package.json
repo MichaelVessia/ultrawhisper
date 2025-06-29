@@ -26,6 +26,7 @@
     "@effect/platform": "^0.87.1",
     "@effect/platform-bun": "^0.72.3",
     "@effect/schema": "^0.75.5",
+    "@xenova/transformers": "^2.17.2",
     "dbus-next": "^0.10.2",
     "effect": "^3.16.10"
   }

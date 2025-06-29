@@ -1,9 +1,11 @@
 import { AudioService } from '@domain/audio/AudioService.ts'
 import { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
+import { TranscriptionService } from '@domain/transcription/TranscriptionService.ts'
 import { BunRuntime } from '@effect/platform-bun'
 import { BunAudioServiceLayer } from '@infrastructure/audio/BunAudioService.ts'
 import { KeyboardServiceFactory } from '@infrastructure/keyboard/KeyboardServiceFactory.ts'
+import { MockTranscriptionServiceLayer } from '@infrastructure/transcription/MockTranscriptionService.ts'
 import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
 import { Console, Effect, Layer, Ref, Stream } from 'effect'
 
@@ -12,9 +14,13 @@ const program = Effect.gen(function* () {
 
   const audio = yield* AudioService
   const keyboard = yield* KeyboardService
+  const transcription = yield* TranscriptionService
 
   // Track recording state
   const isRecordingRef = yield* Ref.make(false)
+
+  // Initialize Whisper model
+  yield* transcription.initializeModel
 
   yield* Console.log('✅ Services initialized')
 
@@ -51,6 +57,16 @@ const program = Effect.gen(function* () {
           yield* Console.log(
             `✅ Recording stopped! Duration: ${recording.duration}ms, Size: ${recording.data.length} bytes`,
           )
+
+          // Transcribe the recording
+          yield* Console.log('🔄 Transcribing audio...')
+          const result = yield* transcription.transcribe(recording)
+
+          if (result.isEmpty) {
+            yield* Console.log('🤐 No speech detected in recording')
+          } else {
+            yield* Console.log(`📝 Transcription (${result.processingTime}ms): "${result.text}"`)
+          }
         }
       }),
     ),
@@ -76,7 +92,11 @@ const runnable = KeyboardServiceFactory.pipe(
     }),
   ),
   Effect.flatMap((keyboardServiceLayer) => {
-    const mainLayer = Layer.mergeAll(BunAudioServiceLayer, keyboardServiceLayer)
+    const mainLayer = Layer.mergeAll(
+      BunAudioServiceLayer,
+      keyboardServiceLayer,
+      MockTranscriptionServiceLayer,
+    )
     return program.pipe(Effect.provide(mainLayer))
   }),
 )
