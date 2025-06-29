@@ -30,9 +30,11 @@ export class BunAudioService implements AudioService {
           function* (this: BunAudioService) {
             try {
               // Use arecord to capture raw PCM audio data
-              // -f cd: CD quality (16-bit, 44.1kHz, stereo)
+              // -r 16000: 16kHz sample rate (required by Whisper)
+              // -f S16_LE: 16-bit signed little endian
+              // -c 1: mono (Whisper works better with mono)
               // -t raw: output raw PCM data
-              const proc = Bun.spawn(['arecord', '-f', 'cd', '-t', 'raw'], {
+              const proc = Bun.spawn(['arecord', '-r', '16000', '-f', 'S16_LE', '-c', '1', '-t', 'raw'], {
                 stdout: 'pipe',
                 signal: controller.signal,
               })
@@ -97,8 +99,8 @@ export class BunAudioService implements AudioService {
         data: combinedData,
         format: 'wav',
         duration,
-        sampleRate: 44100, // CD quality
-        channels: 2, // stereo
+        sampleRate: 16000, // 16kHz required by Whisper
+        channels: 1, // mono
       })
     }.bind(this),
   )
