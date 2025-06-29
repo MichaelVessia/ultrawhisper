@@ -16,13 +16,8 @@ interface DBusProxyObject {
 
 interface DBusInterface {
   CreateSession(options: Record<string, unknown>): Promise<{ session_handle: string }>
-  RegisterShortcut(
-    session_handle: string,
-    shortcut_id: string,
-    shortcut: Record<string, unknown>,
-    options: Record<string, unknown>,
-  ): Promise<void>
-  UnregisterShortcut(session_handle: string, shortcut_id: string): Promise<void>
+  CreateShortcut(options: Record<string, unknown>): Promise<{ shortcut_id: string }>
+  DeleteShortcut(session_handle: string, shortcut_id: string): Promise<void>
   on(event: string, callback: (...args: unknown[]) => void): void
 }
 
@@ -71,6 +66,7 @@ export class PortalKeyboardService implements KeyboardService {
         try: async () => {
           const shortcutId = `ultrawhisper-${hotkeyKey.replace(/[^a-zA-Z0-9]/g, '-')}`
 
+          if (!self.portal) throw new Error('Desktop Portal not connected')
           const result = await self.portal.CreateShortcut({
             session_handle: '',
             shortcut_id: shortcutId,
@@ -107,10 +103,8 @@ export class PortalKeyboardService implements KeyboardService {
 
       yield* Effect.tryPromise({
         try: async () => {
-          await self.portal.DeleteShortcut({
-            session_handle: '',
-            shortcut_id: shortcutId,
-          })
+          if (!self.portal) throw new Error('Desktop Portal not connected')
+          await self.portal.DeleteShortcut('', shortcutId)
         },
         catch: (error) =>
           new HotkeyRegistrationFailed({
@@ -137,17 +131,14 @@ export class PortalKeyboardService implements KeyboardService {
     })
   }
 
-  private cleanup = () => {
+  cleanup = () => {
     const self = this
     return Effect.gen(function* () {
       for (const [_hotkeyKey, shortcutId] of self.registeredHotkeys) {
         yield* Effect.ignore(
           Effect.tryPromise({
             try: async () => {
-              await self.portal?.DeleteShortcut({
-                session_handle: '',
-                shortcut_id: shortcutId,
-              })
+              await self.portal?.DeleteShortcut('', shortcutId)
             },
             catch: () => undefined,
           }),

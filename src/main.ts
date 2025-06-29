@@ -5,7 +5,7 @@ import { TranscriptionService } from '@domain/transcription/TranscriptionService
 import { BunRuntime } from '@effect/platform-bun'
 import { BunAudioServiceLayer } from '@infrastructure/audio/BunAudioService.ts'
 import { KeyboardServiceFactory } from '@infrastructure/keyboard/KeyboardServiceFactory.ts'
-import { MockTranscriptionServiceLayer } from '@infrastructure/transcription/MockTranscriptionService.ts'
+import { LocalWhisperServiceLayer } from '@infrastructure/transcription/LocalWhisperService.ts'
 import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
 import { Console, Effect, Layer, Ref, Stream } from 'effect'
 
@@ -95,7 +95,7 @@ const runnable = KeyboardServiceFactory.pipe(
     const mainLayer = Layer.mergeAll(
       BunAudioServiceLayer,
       keyboardServiceLayer,
-      MockTranscriptionServiceLayer,
+      LocalWhisperServiceLayer,
     )
     return program.pipe(Effect.provide(mainLayer))
   }),

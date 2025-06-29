@@ -17,7 +17,7 @@ interface DBusProxyObject {
 interface DBusInterface {
   GrabAccelerator(accelerator: string, flags: number): Promise<number>
   UngrabAccelerator(action: number): Promise<boolean>
-  on(event: string, callback: (...args: unknown[]) => void): void
+  on(event: string, callback: (actionId: number, deviceId: number) => void): void
 }
 
 export class GnomeKeyboardService implements KeyboardService {
@@ -90,7 +90,8 @@ export class GnomeKeyboardService implements KeyboardService {
       const actionId = yield* Effect.tryPromise({
         try: async () => {
           console.log(`🔧 Attempting to grab accelerator: ${accelerator}`)
-          const result = await self.gnomeShell.GrabAccelerator(accelerator, 0, 0)
+          if (!self.gnomeShell) throw new Error('GNOME Shell not connected')
+          const result = await self.gnomeShell.GrabAccelerator(accelerator, 0)
           console.log(`📦 GrabAccelerator returned:`, result)
           return result
         },
@@ -132,6 +133,7 @@ export class GnomeKeyboardService implements KeyboardService {
 
       yield* Effect.tryPromise({
         try: async () => {
+          if (!self.gnomeShell) throw new Error('GNOME Shell not connected')
           await self.gnomeShell.UngrabAccelerator(actionId)
         },
         catch: (error) =>
@@ -159,7 +161,7 @@ export class GnomeKeyboardService implements KeyboardService {
     })
   }
 
-  private cleanup = () => {
+  cleanup = () => {
     const self = this
     return Effect.gen(function* () {
       for (const [_hotkeyKey, actionId] of self.registeredHotkeys) {
