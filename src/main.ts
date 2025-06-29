@@ -13,31 +13,31 @@ import { Console, Effect, Layer, Ref, Stream } from 'effect'
 
 const checkSystemDependencies = Effect.gen(function* () {
   yield* Console.log('🔧 Checking system dependencies...')
-  
+
   // Check for arecord (audio recording)
   yield* Effect.catchAll(
     Effect.tryPromise({
       try: () => Bun.spawn(['which', 'arecord']).exited,
-      catch: () => new Error('arecord not found')
+      catch: () => new Error('arecord not found'),
     }),
-    (error) => 
+    (_error) =>
       Effect.gen(function* () {
         yield* Console.log('⚠️  arecord not found - audio recording may not work')
         yield* Console.log('💡 Install: sudo apt install alsa-utils')
-      })
+      }),
   )
-  
+
   // Check for xclip (clipboard)
   yield* Effect.catchAll(
     Effect.tryPromise({
       try: () => Bun.spawn(['which', 'xclip']).exited,
-      catch: () => new Error('xclip not found')
+      catch: () => new Error('xclip not found'),
     }),
-    (error) => 
+    (_error) =>
       Effect.gen(function* () {
         yield* Console.log('⚠️  xclip not found - clipboard integration may not work')
         yield* Console.log('💡 Install: sudo apt install xclip')
-      })
+      }),
   )
 })
 
@@ -57,14 +57,12 @@ const program = Effect.gen(function* () {
 
   // Initialize Whisper model
   yield* Console.log('🤖 Initializing Whisper model...')
-  yield* Effect.catchAll(
-    transcription.initializeModel,
-    (error) => 
-      Effect.gen(function* () {
-        yield* Console.log(`❌ Failed to initialize Whisper model: ${error}`)
-        yield* Console.log('💡 Make sure you have internet connection for first-time model download')
-        return yield* Effect.die(error)
-      })
+  yield* Effect.catchAll(transcription.initializeModel, (error) =>
+    Effect.gen(function* () {
+      yield* Console.log(`❌ Failed to initialize Whisper model: ${error}`)
+      yield* Console.log('💡 Make sure you have internet connection for first-time model download')
+      return yield* Effect.die(error)
+    }),
   )
 
   yield* Console.log('✅ Services initialized')
@@ -91,26 +89,22 @@ const program = Effect.gen(function* () {
         if (!isRecording) {
           // Start recording
           yield* Console.log('🎤 Starting recording...')
-          yield* Effect.catchAll(
-            audio.startRecording,
-            (error) => 
-              Effect.gen(function* () {
-                yield* Console.log(`❌ Failed to start recording: ${error}`)
-              })
+          yield* Effect.catchAll(audio.startRecording, (error) =>
+            Effect.gen(function* () {
+              yield* Console.log(`❌ Failed to start recording: ${error}`)
+            }),
           )
           yield* Ref.set(isRecordingRef, true)
           yield* Console.log('🔴 Recording started! Press hotkey again to stop.')
         } else {
           // Stop recording
           yield* Console.log('⏹️  Stopping recording...')
-          const recording = yield* Effect.catchAll(
-            audio.stopRecording,
-            (error) => 
-              Effect.gen(function* () {
-                yield* Console.log(`❌ Failed to stop recording: ${error}`)
-                yield* Ref.set(isRecordingRef, false)
-                return yield* Effect.die(error)
-              })
+          const recording = yield* Effect.catchAll(audio.stopRecording, (error) =>
+            Effect.gen(function* () {
+              yield* Console.log(`❌ Failed to stop recording: ${error}`)
+              yield* Ref.set(isRecordingRef, false)
+              return yield* Effect.die(error)
+            }),
           )
           yield* Ref.set(isRecordingRef, false)
           yield* Console.log(
@@ -119,28 +113,24 @@ const program = Effect.gen(function* () {
 
           // Transcribe the recording
           yield* Console.log('🔄 Transcribing audio...')
-          const result = yield* Effect.catchAll(
-            transcription.transcribe(recording),
-            (error) => 
-              Effect.gen(function* () {
-                yield* Console.log(`❌ Transcription failed: ${error}`)
-                return yield* Effect.die(error)
-              })
+          const result = yield* Effect.catchAll(transcription.transcribe(recording), (error) =>
+            Effect.gen(function* () {
+              yield* Console.log(`❌ Transcription failed: ${error}`)
+              return yield* Effect.die(error)
+            }),
           )
 
           if (result.isEmpty) {
             yield* Console.log('🤐 No speech detected in recording')
           } else {
             yield* Console.log(`📝 Transcription (${result.processingTime}ms): "${result.text}"`)
-            
+
             // Copy to clipboard
             yield* Console.log('📋 Copying to clipboard...')
-            yield* Effect.catchAll(
-              clipboard.writeText(result.text),
-              (error) => 
-                Effect.gen(function* () {
-                  yield* Console.log(`⚠️  Failed to copy to clipboard: ${error}`)
-                })
+            yield* Effect.catchAll(clipboard.writeText(result.text), (error) =>
+              Effect.gen(function* () {
+                yield* Console.log(`⚠️  Failed to copy to clipboard: ${error}`)
+              }),
             )
             yield* Console.log('✅ Text copied to clipboard!')
           }
