@@ -5,8 +5,8 @@ import { Milliseconds } from '@shared/types.ts'
 import { Effect, Layer, Ref, Stream } from 'effect'
 
 export class BunAudioService implements AudioService {
-  private recordingProcessRef = Ref.unsafeMake<AbortController | null>(null)
-  private audioDataRef = Ref.unsafeMake<Uint8Array[]>([])
+  private recordingProcessRef = Ref.unsafeMake<Bun.Subprocess | null>(null)
+  private audioBufferRef = Ref.unsafeMake<Uint8Array | null>(null)
   private startTimeRef = Ref.unsafeMake<number | null>(null)
 
   readonly startRecording = Effect.gen(
@@ -16,53 +16,26 @@ export class BunAudioService implements AudioService {
         return // Already recording
       }
 
-      // Clear previous audio data
-      yield* Ref.set(this.audioDataRef, [])
+      // Clear previous audio data and set start time
+      yield* Ref.set(this.audioBufferRef, null)
       yield* Ref.set(this.startTimeRef, Date.now())
 
-      // Create abort controller to manage the recording process
-      const controller = new AbortController()
-      yield* Ref.set(this.recordingProcessRef, controller)
-
-      // Start arecord process in background to collect audio data
-      Effect.runFork(
-        Effect.gen(
-          function* (this: BunAudioService) {
-            try {
-              // Use arecord to capture raw PCM audio data
-              // -r 16000: 16kHz sample rate (required by Whisper)
-              // -f S16_LE: 16-bit signed little endian
-              // -c 1: mono (Whisper works better with mono)
-              // -t raw: output raw PCM data
-              const proc = Bun.spawn(
-                ['arecord', '-r', '16000', '-f', 'S16_LE', '-c', '1', '-t', 'raw'],
-                {
-                  stdout: 'pipe',
-                  signal: controller.signal,
-                },
-              )
-
-              if (proc.stdout) {
-                const reader = proc.stdout.getReader()
-
-                while (!controller.signal.aborted) {
-                  const result = yield* Effect.promise(() => reader.read())
-                  if (result.done) break
-
-                  if (result.value) {
-                    yield* Ref.update(this.audioDataRef, (chunks) => [
-                      ...chunks,
-                      new Uint8Array(result.value),
-                    ])
-                  }
-                }
-              }
-            } catch (_error) {
-              // Recording stopped or failed
-            }
-          }.bind(this),
-        ),
+      // Start ffmpeg process for WAV recording
+      // -f alsa: Use ALSA input
+      // -i hw:0,0: Use first capture device (most common setup)
+      // -f wav: Output WAV format
+      // -ar 16000: 16kHz sample rate (Whisper requirement)
+      // -ac 1: Mono audio (Whisper compatible)
+      // pipe:1: Output to stdout
+      const proc = Bun.spawn(
+        ['ffmpeg', '-f', 'alsa', '-i', 'hw:0,0', '-f', 'wav', '-ar', '16000', '-ac', '1', 'pipe:1'],
+        {
+          stdout: 'pipe',
+          stderr: 'pipe', // Capture ffmpeg's verbose output
+        },
       )
+
+      yield* Ref.set(this.recordingProcessRef, proc)
     }.bind(this),
   )
 
@@ -78,32 +51,29 @@ export class BunAudioService implements AudioService {
         return yield* Effect.die('No start time recorded')
       }
 
-      // Stop the recording process
-      currentProcess.abort()
+      // Terminate the recording process
+      currentProcess.kill()
       yield* Ref.set(this.recordingProcessRef, null)
 
       // Calculate duration
       const duration = Milliseconds(Date.now() - startTime)
 
-      // Combine all audio chunks
-      const audioChunks = yield* Ref.get(this.audioDataRef)
-      const totalLength = audioChunks.reduce(
-        (sum: number, chunk: Uint8Array) => sum + chunk.length,
-        0,
-      )
-      const combinedData = new Uint8Array(totalLength)
-      let offset = 0
-      for (const chunk of audioChunks) {
-        combinedData.set(chunk, offset)
-        offset += chunk.length
+      // Read all stdout data (WAV format)
+      if (!currentProcess.stdout || typeof currentProcess.stdout === 'number') {
+        return yield* Effect.die('No audio data captured')
       }
 
+      const audioData = yield* Effect.promise(() =>
+        new Response(currentProcess.stdout as ReadableStream).arrayBuffer(),
+      )
+      const wavData = new Uint8Array(audioData)
+
       return new AudioRecording({
-        data: combinedData,
+        data: wavData,
         format: 'wav',
         duration,
-        sampleRate: 16000, // 16kHz required by Whisper
-        channels: 1, // mono
+        sampleRate: 16000,
+        channels: 1,
       })
     }.bind(this),
   )
@@ -115,25 +85,31 @@ export class BunAudioService implements AudioService {
       return
     }
 
-    // Stream audio data as it's being collected
-    const checkForNewData = () => {
-      const audioChunks = Effect.runSync(Ref.get(this.audioDataRef))
-      if (audioChunks.length > 0) {
-        // Emit the latest chunk
-        const latestChunk = audioChunks[audioChunks.length - 1]
-        if (latestChunk) {
-          emit.single(latestChunk)
-        }
-      }
+    // Stream audio data directly from parecord stdout
+    if (!currentProcess.stdout || typeof currentProcess.stdout === 'number') {
+      emit.die('No audio stream available')
+      return
+    }
 
-      if (!currentProcess.signal.aborted) {
-        setTimeout(checkForNewData, 100) // Check every 100ms
-      } else {
+    const reader = (currentProcess.stdout as ReadableStream).getReader()
+
+    const readData = async () => {
+      try {
+        while (true) {
+          const result = await reader.read()
+          if (result.done) break
+
+          if (result.value) {
+            emit.single(new Uint8Array(result.value))
+          }
+        }
         emit.end()
+      } catch (error) {
+        emit.die(`Stream error: ${error}`)
       }
     }
 
-    checkForNewData()
+    readData()
   })
 
   readonly saveRecording = (recording: AudioRecording, path: FilePath) =>

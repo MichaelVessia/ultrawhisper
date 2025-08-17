@@ -28,13 +28,7 @@ src/
 
 ## Usage
 
-**Current Status**: ✅ Core transcription pipeline works perfectly, but **requires manual hotkey setup** in your desktop environment.
-
-### How it works:
-1. You manually configure a global hotkey in your desktop environment to run UltraWhisper
-2. Press your configured hotkey to start the app - it will begin recording immediately
-3. Press the same hotkey again (or let it run) to stop recording and get transcription  
-4. Transcribed text is automatically placed in your clipboard
+UltraWhisper can now run as a background daemon, allowing you to toggle recording on/off with a global keybind without keeping a terminal open.
 
 ### Setup Instructions
 
@@ -43,20 +37,58 @@ src/
 - `xsel` (clipboard): `sudo apt install xsel`
 - Working microphone and audio system
 
-**Manual Hotkey Setup (Required):**
+**1. Install Scripts to PATH (Recommended):**
 
-You need to set up a keyboard shortcut in your desktop environment to launch UltraWhisper:
+```bash
+# Create symlinks to make scripts globally available
+sudo ln -sf "$(pwd)/bin/ultrawhisper" /usr/local/bin/ultrawhisper
+sudo ln -sf "$(pwd)/bin/ultrawhisper-toggle" /usr/local/bin/ultrawhisper-toggle
 
-**GNOME/Ubuntu:**
-1. Open Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts
-2. Add new shortcut:
-   - Name: UltraWhisper Record
-   - Command: `cd /path/to/ultrawhisper && bun run start`
-   - Shortcut: Choose your preferred key (e.g., `Ctrl+Alt+V`)
+# Or add to your PATH in ~/.bashrc or ~/.zshrc:
+export PATH="$PATH:/path/to/ultrawhisper/bin"
+```
 
-**Other desktop environments:** Set up a custom keyboard shortcut to run the command above.
+**2. Start the Daemon:**
 
-⚠️ **Note**: You must manually configure the hotkey in your desktop environment - UltraWhisper does not automatically register global hotkeys.
+```bash
+# Start the background service
+ultrawhisper start
+
+# Check status
+ultrawhisper status
+
+# View logs
+ultrawhisper logs
+
+# Stop the service
+ultrawhisper stop
+```
+
+**3. Set Up Global Keybinding:**
+
+**Option A: Manual GNOME Setup**
+1. Start the daemon: `ultrawhisper start`
+2. Open Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts
+3. Add new shortcut:
+   - Name: UltraWhisper Toggle
+   - Command: `ultrawhisper-toggle`
+   - Shortcut: `Ctrl+\`` (backtick) or your preferred key
+
+**Option B: Home Manager (NixOS)**
+```nix
+"org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
+  name = "UltraWhisper Toggle";
+  command = "ultrawhisper-toggle";
+  binding = "<Primary>grave";  # Ctrl+`
+};
+```
+
+### How it works:
+1. Start the daemon once: `ultrawhisper start`
+2. The daemon runs in the background listening for toggle commands
+3. Press your configured hotkey anywhere to start/stop recording
+4. Transcribed text is automatically placed in your clipboard
+5. The daemon continues running until you stop it
 
 ## What Works (On My System)
 
@@ -91,6 +123,24 @@ bun run dev
 ### Run the application
 ```bash
 bun run start
+```
+
+### Daemon Management
+```bash
+# Start as background daemon
+bun run daemon:start
+
+# Stop the daemon
+bun run daemon:stop
+
+# Check daemon status
+bun run daemon:status
+
+# View daemon logs
+bun run daemon:logs
+
+# Toggle recording (daemon must be running)
+bun run toggle
 ```
 
 ### Run linter

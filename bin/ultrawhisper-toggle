@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# UltraWhisper recording toggle script
+# Triggers the recording on/off in the running daemon
+
+# Configuration
+CONFIG_DIR="$HOME/.config/ultrawhisper"
+TRIGGER_SCRIPT="$CONFIG_DIR/trigger.sh"
+SOCKET_PATH="$CONFIG_DIR/hotkey.sock"
+PID_FILE="/tmp/ultrawhisper.pid"
+
+# Function to check if daemon is running
+is_daemon_running() {
+    if [ -f "$PID_FILE" ]; then
+        local pid=$(cat "$PID_FILE")
+        if ps -p "$pid" > /dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to trigger recording toggle
+trigger_recording() {
+    if ! is_daemon_running; then
+        echo "Error: UltraWhisper daemon is not running"
+        echo "Start it with: ultrawhisper start"
+        exit 1
+    fi
+    
+    # Method 1: Use the trigger script if it exists
+    if [ -f "$TRIGGER_SCRIPT" ] && [ -x "$TRIGGER_SCRIPT" ]; then
+        echo "Triggering recording toggle..."
+        "$TRIGGER_SCRIPT"
+        exit 0
+    fi
+    
+    # Method 2: Directly write to socket file
+    if [ -d "$CONFIG_DIR" ]; then
+        echo "Triggering recording toggle..."
+        echo "triggered" > "$SOCKET_PATH"
+        exit 0
+    fi
+    
+    # If we get here, the daemon might not be properly set up
+    echo "Error: UltraWhisper trigger mechanism not found"
+    echo "Make sure the daemon is running and properly initialized"
+    exit 1
+}
+
+# Main execution
+case "${1:-toggle}" in
+    toggle|"")
+        trigger_recording
+        ;;
+    help|--help|-h)
+        echo "Usage: $0 [toggle]"
+        echo
+        echo "Toggles recording in the running UltraWhisper daemon."
+        echo "The daemon must be started first with 'ultrawhisper start'."
+        ;;
+    *)
+        echo "Error: Unknown command '$1'"
+        echo "Use '$0 help' for usage information"
+        exit 1
+        ;;
+esac

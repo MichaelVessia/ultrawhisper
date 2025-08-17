@@ -1,0 +1,153 @@
+#!/bin/bash
+
+# UltraWhisper daemon control script
+# Manages the background UltraWhisper service
+
+# Configuration
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PID_FILE="/tmp/ultrawhisper.pid"
+LOG_FILE="/tmp/ultrawhisper.log"
+
+# Function to check if process is running
+is_running() {
+    if [ -f "$PID_FILE" ]; then
+        local pid=$(cat "$PID_FILE")
+        if ps -p "$pid" > /dev/null 2>&1; then
+            return 0
+        else
+            # PID file exists but process is dead, clean up
+            rm -f "$PID_FILE"
+            return 1
+        fi
+    fi
+    return 1
+}
+
+# Function to start the daemon
+start_daemon() {
+    if is_running; then
+        echo "UltraWhisper is already running (PID: $(cat "$PID_FILE"))"
+        return 1
+    fi
+    
+    echo "Starting UltraWhisper daemon..."
+    cd "$PROJECT_DIR"
+    
+    # Start the process in background and save PID
+    nohup bun src/index.ts > "$LOG_FILE" 2>&1 &
+    local pid=$!
+    echo "$pid" > "$PID_FILE"
+    
+    # Give it a moment to start
+    sleep 2
+    
+    if is_running; then
+        echo "UltraWhisper started successfully (PID: $pid)"
+        echo "Logs: $LOG_FILE"
+        return 0
+    else
+        echo "Failed to start UltraWhisper"
+        echo "Check logs: $LOG_FILE"
+        return 1
+    fi
+}
+
+# Function to stop the daemon
+stop_daemon() {
+    if ! is_running; then
+        echo "UltraWhisper is not running"
+        return 1
+    fi
+    
+    local pid=$(cat "$PID_FILE")
+    echo "Stopping UltraWhisper (PID: $pid)..."
+    
+    # Try graceful shutdown first
+    kill "$pid" 2>/dev/null
+    
+    # Wait a bit for graceful shutdown
+    local count=0
+    while [ $count -lt 5 ] && is_running; do
+        sleep 1
+        count=$((count + 1))
+    done
+    
+    # Force kill if still running
+    if is_running; then
+        echo "Forcing shutdown..."
+        kill -9 "$pid" 2>/dev/null
+        sleep 1
+    fi
+    
+    # Clean up PID file
+    rm -f "$PID_FILE"
+    
+    if ! is_running; then
+        echo "UltraWhisper stopped"
+        return 0
+    else
+        echo "Failed to stop UltraWhisper"
+        return 1
+    fi
+}
+
+# Function to show status
+show_status() {
+    if is_running; then
+        local pid=$(cat "$PID_FILE")
+        echo "UltraWhisper is running (PID: $pid)"
+        echo "Logs: $LOG_FILE"
+        return 0
+    else
+        echo "UltraWhisper is not running"
+        return 1
+    fi
+}
+
+# Function to restart the daemon
+restart_daemon() {
+    echo "Restarting UltraWhisper..."
+    stop_daemon
+    sleep 1
+    start_daemon
+}
+
+# Function to show logs
+show_logs() {
+    if [ -f "$LOG_FILE" ]; then
+        tail -f "$LOG_FILE"
+    else
+        echo "No log file found at $LOG_FILE"
+        return 1
+    fi
+}
+
+# Main command handling
+case "${1:-}" in
+    start)
+        start_daemon
+        ;;
+    stop)
+        stop_daemon
+        ;;
+    restart)
+        restart_daemon
+        ;;
+    status)
+        show_status
+        ;;
+    logs)
+        show_logs
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status|logs}"
+        echo
+        echo "Commands:"
+        echo "  start   - Start UltraWhisper daemon"
+        echo "  stop    - Stop UltraWhisper daemon"
+        echo "  restart - Restart UltraWhisper daemon"
+        echo "  status  - Show daemon status"
+        echo "  logs    - Show and follow logs"
+        exit 1
+        ;;
+esac
