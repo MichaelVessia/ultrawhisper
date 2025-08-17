@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Development
 - `bun run dev` - Run in development mode with hot-reload
 - `bun run start` - Run the application
+- `bun run start --test <wav-file>` - Run in test mode using a WAV file instead of microphone
 - `bun install` - Install dependencies
 
 ### Code Quality
