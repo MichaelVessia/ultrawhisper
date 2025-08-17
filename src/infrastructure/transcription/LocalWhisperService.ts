@@ -13,10 +13,13 @@ import whisper from 'whisper-node'
 
 export class LocalWhisperService implements TranscriptionService {
   private readonly tempDir: string
+  private readonly modelName: string
   private isModelInitialized = false
 
   constructor() {
     this.tempDir = join(homedir(), '.ultrawhisper', 'temp')
+    // Allow model selection via environment variable, default to small.en for better quality
+    this.modelName = process.env.ULTRAWHISPER_MODEL || 'small.en'
 
     // Ensure temp directory exists
     if (!existsSync(this.tempDir)) {
@@ -26,11 +29,11 @@ export class LocalWhisperService implements TranscriptionService {
 
   readonly initializeModel = Effect.gen(
     function* (this: LocalWhisperService) {
-      yield* Console.log('🤖 Initializing Whisper model...')
+      yield* Console.log(`🤖 Initializing Whisper model (${this.modelName})...`)
 
       try {
         if (!this.isModelInitialized) {
-          yield* Console.log('📥 Whisper model ready (using whisper.cpp)')
+          yield* Console.log(`📥 Whisper model ready (using whisper.cpp with ${this.modelName})`)
           this.isModelInitialized = true
           yield* Console.log('✅ Model ready for transcription')
         } else {
@@ -71,10 +74,19 @@ export class LocalWhisperService implements TranscriptionService {
 
           yield* Console.log('🔄 Transcribing audio...')
 
-          // Wrap whisper call with detailed error handling
+          // Wrap whisper call with detailed error handling and better model configuration
           const result = yield* Effect.promise(async () => {
             try {
-              const whisperResult = await whisper(tempFilePath)
+              const whisperResult = await whisper(tempFilePath, {
+                modelName: this.modelName, // Use configured model
+                whisperOptions: {
+                  language: 'auto', // Auto-detect language
+                  word_timestamps: true, // Enable word-level timestamps
+                  gen_file_txt: false, // Don't generate text files
+                  gen_file_subtitle: false, // Don't generate subtitle files
+                  gen_file_vtt: false, // Don't generate VTT files
+                },
+              })
               console.log('📊 Raw Whisper result:', JSON.stringify(whisperResult, null, 2))
               return whisperResult
             } catch (error) {
@@ -142,10 +154,19 @@ export class LocalWhisperService implements TranscriptionService {
         try {
           yield* Console.log(`🔄 Transcribing file: ${audioPath}`)
 
-          // Wrap whisper call with detailed error handling
+          // Wrap whisper call with detailed error handling and better model configuration
           const result = yield* Effect.promise(async () => {
             try {
-              const whisperResult = await whisper(audioPath)
+              const whisperResult = await whisper(audioPath, {
+                modelName: this.modelName, // Use configured model
+                whisperOptions: {
+                  language: 'auto', // Auto-detect language
+                  word_timestamps: true, // Enable word-level timestamps
+                  gen_file_txt: false, // Don't generate text files
+                  gen_file_subtitle: false, // Don't generate subtitle files
+                  gen_file_vtt: false, // Don't generate VTT files
+                },
+              })
               console.log('📊 Raw Whisper result:', JSON.stringify(whisperResult, null, 2))
               return whisperResult
             } catch (error) {

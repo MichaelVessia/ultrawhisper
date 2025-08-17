@@ -1,5 +1,8 @@
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { AudioService } from '@domain/audio/AudioService.ts'
 import { ClipboardService } from '@domain/clipboard/ClipboardService.ts'
+import { FeedbackService, FeedbackType } from '@domain/feedback/FeedbackService.ts'
 import { Hotkey } from '@domain/keyboard/Hotkey.ts'
 import { KeyboardService } from '@domain/keyboard/KeyboardService.ts'
 import { TranscriptionService } from '@domain/transcription/TranscriptionService.ts'
@@ -7,13 +10,12 @@ import { BunRuntime } from '@effect/platform-bun'
 import { BunAudioServiceLayer } from '@infrastructure/audio/BunAudioService.ts'
 import { createTestAudioServiceLayer } from '@infrastructure/audio/TestAudioService.ts'
 import { LinuxClipboardServiceLayer } from '@infrastructure/clipboard/LinuxClipboardService.ts'
+import { LinuxFeedbackServiceLayer } from '@infrastructure/feedback/LinuxFeedbackService.ts'
 import { KeyboardServiceFactory } from '@infrastructure/keyboard/KeyboardServiceFactory.ts'
 import { LocalWhisperServiceLayer } from '@infrastructure/transcription/LocalWhisperService.ts'
 import { DEFAULT_RECORDING_HOTKEY } from '@shared/constants.ts'
 import { FilePath } from '@shared/types.ts'
 import { Console, Effect, Layer, Ref, Stream } from 'effect'
-import * as path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 // Get the directory of the project root (where package.json is)
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -29,8 +31,8 @@ const parseArgs = () => {
       throw new Error('Test file path is required when using --test flag')
     }
     // Resolve relative paths to absolute paths relative to project root
-    const absolutePath = path.isAbsolute(testFilePath) 
-      ? testFilePath 
+    const absolutePath = path.isAbsolute(testFilePath)
+      ? testFilePath
       : path.resolve(projectRoot, testFilePath)
     return { mode: 'test' as const, testFilePath: FilePath(absolutePath) }
   }
@@ -90,6 +92,7 @@ const program = (config: ReturnType<typeof parseArgs>) =>
     const keyboard = yield* KeyboardService
     const transcription = yield* TranscriptionService
     const clipboard = yield* ClipboardService
+    const feedback = yield* FeedbackService
 
     // Check system dependencies (skip in test mode)
     if (config.mode === 'production') {
@@ -144,6 +147,8 @@ const program = (config: ReturnType<typeof parseArgs>) =>
             )
             yield* Ref.set(isRecordingRef, true)
             yield* Console.log('🔴 Recording started! Press hotkey again to stop.')
+            // Provide audio feedback
+            yield* Effect.fork(feedback.playSound(FeedbackType.RECORDING_STARTED))
           } else {
             // Stop recording
             yield* Console.log('⏹️  Stopping recording...')
@@ -172,6 +177,8 @@ const program = (config: ReturnType<typeof parseArgs>) =>
               yield* Console.log('🤐 No speech detected in recording')
             } else {
               yield* Console.log(`📝 Transcription (${result.processingTime}ms): "${result.text}"`)
+              // Provide transcription complete audio feedback
+              yield* Effect.fork(feedback.playSound(FeedbackType.TRANSCRIPTION_COMPLETE))
 
               // Copy to clipboard
               yield* Console.log('📋 Copying to clipboard...')
@@ -224,6 +231,7 @@ const runnable = KeyboardServiceFactory.pipe(
       keyboardServiceLayer,
       LocalWhisperServiceLayer,
       LinuxClipboardServiceLayer,
+      LinuxFeedbackServiceLayer,
     )
     return program(config).pipe(Effect.provide(mainLayer))
   }),

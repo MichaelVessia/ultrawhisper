@@ -62,6 +62,27 @@ Service selection happens at runtime via `KeyboardServiceFactory` based on detec
 - **Linting**: Biome (replaces ESLint/Prettier)
 - **Desktop Integration**: D-Bus (dbus-next) for Linux desktop APIs
 
+## Audio Feedback
+The app provides optional audio feedback for recording events:
+
+### Environment Variables
+- `ULTRAWHISPER_SOUND_ENABLED=true/false` - Enable/disable sound feedback (default: true)
+- `ULTRAWHISPER_SOUND_RECORDING_STARTED=/path/to/sound.oga` - Custom sound for recording start
+- `ULTRAWHISPER_SOUND_TRANSCRIPTION_COMPLETE=/path/to/sound.oga` - Custom sound for transcription complete
+- `ULTRAWHISPER_MODEL=model_name` - Whisper model to use (default: medium.en)
+  - Available models: tiny, tiny.en, base, base.en, small, small.en, medium, medium.en, large-v1, large, large-v3-turbo
+  - .en models perform better for English-only use cases
+  - Larger models provide better accuracy but use more memory and take longer to process
+
+### Feedback Events
+- **Recording Started**: Bell sound (immediate audio confirmation)
+- **Transcription Complete**: Message sound (when text is ready)
+
+### System Requirements
+- `play` (SoX) for sound playback (preferred)
+- System sounds from `/usr/share/sounds/Yaru/stereo/` (Ubuntu/GNOME)
+- Falls back to system bell if SoX unavailable
+
 ## Development Notes
 - Uses 2-space indentation, single quotes, no semicolons (Biome config)
 - Entry point: `src/index.ts` → `src/main.ts`
